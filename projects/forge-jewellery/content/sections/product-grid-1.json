@@ -1,0 +1,13 @@
+{
+  "id": "product-grid-1",
+  "type": "product-grid",
+  "name": "Featured Products",
+  "settings": {
+    "title": "Featured Products",
+    "subtitle": "Handpicked just for you",
+    "product_slugs": ["gold-cuban-chain", "diamond-signet-ring", "silver-cuban-bracelet"],
+    "columns": 3,
+    "show_prices": true,
+    "show_add_to_cart": true
+  }
+}

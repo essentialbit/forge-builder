@@ -1,0 +1,13 @@
+{
+  "id": "trust-badges-1",
+  "type": "trust-badges",
+  "name": "Trust Badges",
+  "settings": {
+    "badges": [
+      { "icon": "ShieldCheck", "label": "Secure Checkout", "link": "/security" },
+      { "icon": "Truck", "label": "Free Shipping", "link": "/shipping" },
+      { "icon": "RefreshCw", "label": "30-Day Returns", "link": "/returns" },
+      { "icon": "Headphones", "label": "24/7 Support", "link": "/support" }
+    ]
+  }
+}

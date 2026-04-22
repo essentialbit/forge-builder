@@ -1,0 +1,12 @@
+{
+  "id": "announcement-1",
+  "type": "announcement",
+  "name": "Announcement Bar",
+  "settings": {
+    "text": "Free shipping on orders over $100 | Use code FORGE20 for 20% off",
+    "link": "/shipping",
+    "background_color": "#D4AF37",
+    "text_color": "#000000",
+    "dismissible": true
+  }
+}

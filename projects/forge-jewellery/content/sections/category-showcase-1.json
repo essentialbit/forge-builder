@@ -1,0 +1,11 @@
+{
+  "id": "category-showcase-1",
+  "type": "category-showcase",
+  "name": "Category Showcase",
+  "settings": {
+    "title": "Shop by Category",
+    "subtitle": "Find your perfect piece",
+    "category_slugs": ["rings", "necklaces", "bracelets", "earrings"],
+    "display_mode": "grid"
+  }
+}

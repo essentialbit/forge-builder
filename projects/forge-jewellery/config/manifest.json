@@ -1,0 +1,47 @@
+{
+  "id": "forge-jewellery",
+  "name": "Forge Jewellery",
+  "description": "Australian luxury jewellery store - premium iced out jewelry for those who stand out",
+  "created": "2026-03-23T00:00:00.000Z",
+  "updated": "2026-04-20T12:00:00.000Z",
+  "status": "draft",
+  "theme": {
+    "primaryColor": "#D4AF37",
+    "secondaryColor": "#0a0a0a",
+    "accentColor": "#ffffff",
+    "fontFamily": "Inter",
+    "logo": "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=200&q=80"
+  },
+  "pages": [
+    {
+      "id": "home",
+      "name": "Home",
+      "slug": "/",
+      "sections": [
+        "hero-1",
+        "announcement-1",
+        "category-showcase-1",
+        "product-grid-1",
+        "trust-badges-1",
+        "newsletter-1",
+        "footer-1"
+      ]
+    },
+    {
+      "id": "shop",
+      "name": "Shop",
+      "slug": "/shop",
+      "sections": [
+        "product-grid-2"
+      ]
+    },
+    {
+      "id": "about",
+      "name": "About",
+      "slug": "/about",
+      "sections": [
+        "rich-text-1"
+      ]
+    }
+  ]
+}
