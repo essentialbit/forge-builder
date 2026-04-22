@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useBuilderStore } from "@/lib/builder-store";
 import { sectionRegistry } from "@/lib/section-registry";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,12 @@ import { ArrayField } from "@/components/builder/ArrayField";
 import { ProductPicker } from "@/components/builder/ProductPicker";
 import { FontPicker } from "@/components/builder/FontPicker";
 import { ColorSchemePicker } from "@/components/builder/ColorSchemePicker";
+import { ResponsivePanel } from "@/components/builder/ResponsivePanel";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export function Inspector() {
   const { project, selectedSectionId, updateSection, removeSection, selectSection, duplicateSection, moveSection } = useBuilderStore();
+  const [tab, setTab] = useState("content");
 
   if (!project || !selectedSectionId) return null;
 
@@ -52,18 +56,28 @@ export function Inspector() {
         </p>
       </div>
 
-      {/* Settings Form */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {Object.entries(definition.schema).map(([key, field]) => (
-          <FieldRenderer
-            key={key}
-            fieldKey={key}
-            field={field}
-            value={section!.settings[key]}
-            onChange={(value) => handleSettingChange(key, value)}
-          />
-        ))}
-      </div>
+      <Tabs value={tab} onChange={setTab} className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="w-full rounded-none border-b border-slate-800 bg-slate-900 p-0 h-auto">
+          <TabsTrigger value="content" className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-amber-500 data-[state=active]:bg-transparent py-2 text-xs">Content</TabsTrigger>
+          <TabsTrigger value="responsive" className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-amber-500 data-[state=active]:bg-transparent py-2 text-xs">Responsive</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="content" className="flex-1 overflow-y-auto p-4 space-y-4 mt-0">
+          {Object.entries(definition.schema).map(([key, field]) => (
+            <FieldRenderer
+              key={key}
+              fieldKey={key}
+              field={field}
+              value={section!.settings[key]}
+              onChange={(value) => handleSettingChange(key, value)}
+            />
+          ))}
+        </TabsContent>
+
+        <TabsContent value="responsive" className="flex-1 overflow-y-auto p-4 mt-0">
+          <ResponsivePanel section={section!} />
+        </TabsContent>
+      </Tabs>
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-800 space-y-2">

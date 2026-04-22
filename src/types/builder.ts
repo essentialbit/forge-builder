@@ -81,6 +81,15 @@ export interface Section {
   type: SectionType;
   name: string;
   settings: Record<string, unknown>;
+  /** Optional per-breakpoint overrides for select settings, plus visibility flags. */
+  responsive?: {
+    hideMobile?: boolean;
+    hideTablet?: boolean;
+    hideDesktop?: boolean;
+    /** Sparse per-setting override: { mobile: { columns: 2 } } */
+    mobile?: Record<string, unknown>;
+    tablet?: Record<string, unknown>;
+  };
 }
 
 export interface BrandKit {

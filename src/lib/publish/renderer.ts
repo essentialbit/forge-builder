@@ -94,7 +94,26 @@ function pickProducts(
 
 function renderSection(section: Section, theme: Theme, products: CatalogProduct[]): string {
   const s = section.settings as Record<string, unknown>;
+  const raw = _renderSectionInner(section, theme, products, s);
 
+  const r = section.responsive;
+  if (!r || (!r.hideMobile && !r.hideTablet && !r.hideDesktop)) return raw;
+  const classes = [
+    r.hideMobile ? 'fb-hide-mobile' : '',
+    r.hideTablet ? 'fb-hide-tablet' : '',
+    r.hideDesktop ? 'fb-hide-desktop' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return `<div class="${classes}">${raw}</div>`;
+}
+
+function _renderSectionInner(
+  section: Section,
+  theme: Theme,
+  products: CatalogProduct[],
+  s: Record<string, unknown>,
+): string {
   switch (section.type) {
     case 'hero': {
       const headline = escape(s.headline ?? 'Welcome');
@@ -104,16 +123,31 @@ function renderSection(section: Section, theme: Theme, products: CatalogProduct[
       const bgImg = escape(s.background_image_url ?? '');
       const overlay = Number(s.overlay_opacity ?? 50);
       const textAlign = String(s.text_alignment ?? 'center');
-      const textColor = escape(s.text_color ?? '#fff');
-      const bgColor = escape(s.background_color ?? '#000');
+      const animation = String(s.animation ?? 'fade-in');
+      const height = String(s.height ?? 'large');
+      const heightMap: Record<string, string> = {
+        small: '40vh',
+        medium: '60vh',
+        large: '80vh',
+        full: '100vh',
+      };
+      // Resolve color scheme if provided
+      const schemeId = (s.color_scheme as string) || '';
+      const theme2 = theme as ReturnType<typeof normalizeTheme>;
+      const scheme = schemeId ? getScheme(theme2, schemeId) : null;
+      const bg = scheme?.background ?? '#000';
+      const text = scheme?.text ?? '#fff';
+      const accent = scheme?.accent ?? theme2.primaryColor ?? '#D4AF37';
+      const onAccent = scheme?.onAccent ?? theme2.secondaryColor ?? '#000';
+      const animCls = animation !== 'none' ? `fb-anim-${animation}` : '';
       return `
-<section class="fb-hero" style="background:${bgColor};color:${textColor};text-align:${textAlign}">
+<section class="fb-hero ${animCls}" style="background:${bg};color:${text};text-align:${textAlign};min-height:${heightMap[height] || '80vh'}">
   ${bgImg ? `<div class="fb-hero-bg" style="background-image:url('${bgImg}')"></div>` : ''}
   <div class="fb-hero-overlay" style="background:rgba(0,0,0,${overlay / 100})"></div>
   <div class="fb-hero-inner">
-    <h1 style="color:${textColor};font-family:${escape(theme.fontFamily)}">${headline}</h1>
+    <h1 style="color:${text}">${headline}</h1>
     ${subheadline ? `<p>${subheadline}</p>` : ''}
-    <a class="fb-btn" style="background:${escape(theme.primaryColor)};color:${escape(theme.secondaryColor)}" href="${ctaLink}">${cta}</a>
+    <a class="fb-btn" style="background:${accent};color:${onAccent}" href="${ctaLink}">${cta}</a>
   </div>
 </section>`;
     }
@@ -395,6 +429,13 @@ h1,h2,h3,h4{font-family:var(--fb-heading-font),system-ui,sans-serif}
 .fb-header{position:sticky;top:0;z-index:50;background:var(--fb-bg);border-bottom:1px solid var(--fb-border);padding:1rem 0}
 .fb-header-inner{max-width:var(--fb-max-w);margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;gap:2rem}
 .fb-header-inner .fb-brand{font-weight:800;font-size:1.25rem}
+/* Responsive visibility */
+@media(max-width:640px){.fb-hide-mobile{display:none !important}}
+@media(min-width:641px) and (max-width:1024px){.fb-hide-tablet{display:none !important}}
+@media(min-width:1025px){.fb-hide-desktop{display:none !important}}
+/* Mobile product grid defaults to 2 cols unless overridden */
+@media(max-width:640px){.fb-grid{grid-template-columns:repeat(2,1fr) !important}}
+@media(max-width:420px){.fb-grid{grid-template-columns:1fr !important}}
 .fb-header-inner nav{flex:1;display:flex;gap:1.5rem}
 .fb-header-inner a{color:var(--fb-text);text-decoration:none;font-size:0.95rem}
 .fb-cart-btn{background:none;border:1px solid var(--fb-border);padding:0.5rem 1rem;cursor:pointer;font-weight:600;border-radius:var(--fb-radius);color:var(--fb-text)}
