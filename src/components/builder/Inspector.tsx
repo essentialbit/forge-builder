@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
-import { Trash2, Settings, GripVertical } from "lucide-react";
+import { Trash2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FieldType, Section } from "@/types/builder";
+import { ArrayField } from "@/components/builder/ArrayField";
 
 export function Inspector() {
   const { project, selectedSectionId, updateSection, removeSection, selectSection } = useBuilderStore();
@@ -213,9 +214,11 @@ function FieldRenderer({ fieldKey, field, value, onChange }: FieldRendererProps)
       )}
 
       {field.type === "array" && (
-        <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-          <p className="text-xs text-slate-400">Array field - configure in code</p>
-        </div>
+        <ArrayField
+          fieldKey={fieldKey}
+          value={Array.isArray(value) ? (value as Parameters<typeof ArrayField>[0]["value"]) : []}
+          onChange={(v) => onChange(v)}
+        />
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { LeftPanel } from "@/components/builder/LeftPanel";
 import { Canvas } from "@/components/builder/Canvas";
 import { Inspector } from "@/components/builder/Inspector";
 import { BrandKit } from "@/components/builder/BrandKit";
+import { DnDProvider } from "@/components/builder/DnDContext";
 import { useState } from "react";
 
 export default function BuilderPage() {
@@ -49,26 +50,28 @@ export default function BuilderPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 overflow-hidden">
-      {/* Top Toolbar */}
-      <Toolbar onBrandKitClick={() => setBrandKitOpen(true)} />
+    <DnDProvider>
+      <div className="h-screen flex flex-col bg-slate-950 overflow-hidden">
+        {/* Top Toolbar */}
+        <Toolbar onBrandKitClick={() => setBrandKitOpen(true)} />
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel */}
-        <LeftPanel />
+        {/* Main Content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Panel */}
+          <LeftPanel />
 
-        {/* Canvas */}
-        <div className="flex-1 relative">
-          <Canvas />
+          {/* Canvas */}
+          <div className="flex-1 relative">
+            <Canvas />
+          </div>
+
+          {/* Right Panel - Inspector */}
+          {selectedSectionId && <Inspector />}
         </div>
 
-        {/* Right Panel - Inspector */}
-        {selectedSectionId && <Inspector />}
+        {/* Brand Kit Modal */}
+        <BrandKit open={brandKitOpen} onOpenChange={setBrandKitOpen} />
       </div>
-
-      {/* Brand Kit Modal */}
-      <BrandKit open={brandKitOpen} onOpenChange={setBrandKitOpen} />
-    </div>
+    </DnDProvider>
   );
 }

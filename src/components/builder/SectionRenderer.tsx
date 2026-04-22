@@ -1,7 +1,60 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Section } from "@/types/builder";
 import { sectionRegistry } from "@/lib/section-registry";
+
+type CatalogProduct = {
+  sku: string;
+  slug: string;
+  name: string;
+  price: number;
+  compare_price?: number | null;
+  category: string;
+  image: string;
+  materials?: string;
+};
+
+type Catalog = {
+  products: CatalogProduct[];
+  categories: string[];
+};
+
+let catalogCache: Catalog | null = null;
+let catalogPromise: Promise<Catalog> | null = null;
+
+async function fetchCatalog(): Promise<Catalog> {
+  if (catalogCache) return catalogCache;
+  if (!catalogPromise) {
+    catalogPromise = fetch("/api/catalog")
+      .then((r) => (r.ok ? r.json() : { products: [], categories: [] }))
+      .then((c: Catalog) => {
+        catalogCache = c;
+        return c;
+      })
+      .catch(() => ({ products: [], categories: [] }));
+  }
+  return catalogPromise;
+}
+
+function useCatalog(): Catalog {
+  const [cat, setCat] = useState<Catalog>(catalogCache ?? { products: [], categories: [] });
+  useEffect(() => {
+    if (catalogCache) return;
+    let cancelled = false;
+    fetchCatalog().then((c) => {
+      if (!cancelled) setCat(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return cat;
+}
+
+function formatAUD(v: number): string {
+  return "$" + v.toLocaleString("en-AU", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
 
 type Theme = {
   primaryColor: string;
@@ -153,14 +206,25 @@ function AnnouncementSection({ settings, theme, isEditing, onSelect, isSelected 
 function ProductGridSection({ settings, theme, isEditing, onSelect, isSelected }: SectionProps) {
   const title = (settings.title as string) || "Featured Products";
   const subtitle = (settings.subtitle as string) || "";
-  const columns = (settings.columns as number) || 3;
-  const productSlugs = (settings.product_slugs as string[]) || [];
+  const columns = Math.max(1, Math.min(5, (settings.columns as number) || 3));
+  const productSlugs = Array.isArray(settings.product_slugs) ? (settings.product_slugs as string[]) : [];
+  const showPrices = settings.show_prices !== false;
+  const showAddToCart = settings.show_add_to_cart !== false;
 
-  const mockProducts = [
-    { slug: "gold-chain", name: "Gold Cuban Chain", price: "$299" },
-    { slug: "diamond-ring", name: "Diamond Signet Ring", price: "$599" },
-    { slug: "silver-bracelet", name: "Silver Cuban Bracelet", price: "$199" },
-  ].slice(0, columns);
+  const catalog = useCatalog();
+
+  // Resolve products: by slug if provided, else top-N from catalog
+  let products: CatalogProduct[] = [];
+  if (productSlugs.length > 0) {
+    const bySlug = new Map(catalog.products.map((p) => [p.slug, p] as const));
+    const bySku = new Map(catalog.products.map((p) => [p.sku.toLowerCase(), p] as const));
+    products = productSlugs
+      .map((s) => bySlug.get(s) ?? bySku.get(s.toLowerCase()))
+      .filter((p): p is CatalogProduct => Boolean(p));
+  }
+  if (products.length === 0) {
+    products = catalog.products.slice(0, columns * 2);
+  }
 
   return (
     <section
@@ -179,28 +243,63 @@ function ProductGridSection({ settings, theme, isEditing, onSelect, isSelected }
             </p>
           )}
         </div>
-        <div
-          className="grid gap-6"
-          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-        >
-          {mockProducts.map((product) => (
-            <div
-              key={product.slug}
-              className="rounded-xl overflow-hidden"
-              style={{ backgroundColor: theme.accentColor }}
-            >
-              <div className="aspect-square bg-slate-200" />
-              <div className="p-4">
-                <h3 className="font-semibold" style={{ color: theme.secondaryColor }}>
-                  {product.name}
-                </h3>
-                <p className="text-lg font-bold mt-1" style={{ color: theme.primaryColor }}>
-                  {product.price}
-                </p>
+
+        {products.length === 0 ? (
+          <div className="text-center py-12 opacity-60" style={{ color: theme.accentColor }}>
+            No products to display.
+          </div>
+        ) : (
+          <div
+            className="grid gap-6"
+            style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+          >
+            {products.slice(0, columns * 2).map((product) => (
+              <div
+                key={product.sku}
+                className="rounded-xl overflow-hidden flex flex-col"
+                style={{ backgroundColor: theme.accentColor }}
+              >
+                <div className="aspect-square bg-slate-100 overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.opacity = "0.3";
+                    }}
+                  />
+                </div>
+                <div className="p-4 flex-1 flex flex-col">
+                  <h3 className="font-semibold text-sm line-clamp-2" style={{ color: theme.secondaryColor }}>
+                    {product.name}
+                  </h3>
+                  {showPrices && (
+                    <div className="flex items-baseline gap-2 mt-2">
+                      <p className="text-lg font-bold" style={{ color: theme.primaryColor }}>
+                        {formatAUD(product.price)}
+                      </p>
+                      {product.compare_price && product.compare_price > product.price && (
+                        <p className="text-xs line-through opacity-50" style={{ color: theme.secondaryColor }}>
+                          {formatAUD(product.compare_price)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {showAddToCart && (
+                    <button
+                      className="mt-auto pt-3 text-xs font-semibold uppercase tracking-wider hover:underline self-start"
+                      style={{ color: theme.primaryColor }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Add to cart →
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -209,14 +308,21 @@ function ProductGridSection({ settings, theme, isEditing, onSelect, isSelected }
 function CategoryShowcaseSection({ settings, theme, isEditing, onSelect, isSelected }: SectionProps) {
   const title = (settings.title as string) || "Shop by Category";
   const subtitle = (settings.subtitle as string) || "";
-  const categories = (settings.category_slugs as string[]) || ["rings", "necklaces", "bracelets", "earrings"];
+  const categorySlugs = Array.isArray(settings.category_slugs)
+    ? (settings.category_slugs as string[])
+    : ["rings", "necklaces", "bracelets", "earrings"];
 
-  const categoryData = [
-    { slug: "rings", name: "Rings", image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&q=80" },
-    { slug: "necklaces", name: "Necklaces", image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80" },
-    { slug: "bracelets", name: "Bracelets", image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&q=80" },
-    { slug: "earrings", name: "Earrings", image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab8b529?w=400&q=80" },
-  ];
+  const catalog = useCatalog();
+
+  // Pick the top-scoring product image per category as the tile
+  const categoryData = categorySlugs.map((slug) => {
+    const sample = catalog.products.find((p) => p.category.toLowerCase() === slug.toLowerCase());
+    return {
+      slug,
+      name: slug.charAt(0).toUpperCase() + slug.slice(1),
+      image: sample?.image ?? `https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&q=80`,
+    };
+  });
 
   return (
     <section
@@ -236,7 +342,7 @@ function CategoryShowcaseSection({ settings, theme, isEditing, onSelect, isSelec
           )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {categoryData.slice(0, 4).map((cat) => (
+          {categoryData.map((cat) => (
             <a
               key={cat.slug}
               href={`/collections/${cat.slug}`}
