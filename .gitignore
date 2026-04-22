@@ -4,3 +4,7 @@ node_modules/
 .DS_Store
 npm-debug.log*
 
+# Forge publish artefacts — local render + deploy worktrees
+projects/*/export/
+projects/*/.forge-publish/
+

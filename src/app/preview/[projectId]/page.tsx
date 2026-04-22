@@ -14,6 +14,9 @@ export default function PreviewPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
     async function loadPreview() {
@@ -34,20 +37,30 @@ export default function PreviewPage() {
     if (projectId) {
       loadPreview();
     }
-  }, [projectId]);
+  }, [projectId, reloadKey]);
 
-  // Listen for section updates from builder
+  // Listen for updates from builder
   const handleMessage = useCallback((event: MessageEvent) => {
-    const { type, sectionId, updates } = event.data;
+    const { type, sectionId, updates, theme } = event.data || {};
 
-    if (type === "SECTION_UPDATE") {
+    if (type === "SECTION_UPDATE" && sectionId) {
       setSections((prev) =>
         prev.map((s) =>
-          s.id === sectionId ? { ...s, settings: { ...s.settings, ...updates.settings } } : s
+          s.id === sectionId
+            ? { ...s, settings: { ...s.settings, ...(updates?.settings ?? {}) } }
+            : s
         )
       );
     }
-  }, []);
+
+    if (type === "THEME_UPDATE" && theme) {
+      setProject((prev) => (prev ? { ...prev, theme: { ...prev.theme, ...theme } } : prev));
+    }
+
+    if (type === "RELOAD") {
+      reload();
+    }
+  }, [reload]);
 
   useEffect(() => {
     window.addEventListener("message", handleMessage);

@@ -9,6 +9,7 @@ import { Canvas } from "@/components/builder/Canvas";
 import { Inspector } from "@/components/builder/Inspector";
 import { BrandKit } from "@/components/builder/BrandKit";
 import { DnDProvider } from "@/components/builder/DnDContext";
+import { PublishDialog } from "@/components/builder/PublishDialog";
 import { useState } from "react";
 
 export default function BuilderPage() {
@@ -16,6 +17,7 @@ export default function BuilderPage() {
   const projectId = params.projectId as string;
   const { loadProject, project, selectedSectionId, isLoading } = useBuilderStore();
   const [brandKitOpen, setBrandKitOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -53,7 +55,10 @@ export default function BuilderPage() {
     <DnDProvider>
       <div className="h-screen flex flex-col bg-slate-950 overflow-hidden">
         {/* Top Toolbar */}
-        <Toolbar onBrandKitClick={() => setBrandKitOpen(true)} />
+        <Toolbar
+          onBrandKitClick={() => setBrandKitOpen(true)}
+          onPublishClick={() => setPublishOpen(true)}
+        />
 
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
@@ -71,6 +76,9 @@ export default function BuilderPage() {
 
         {/* Brand Kit Modal */}
         <BrandKit open={brandKitOpen} onOpenChange={setBrandKitOpen} />
+
+        {/* Publish Dialog */}
+        <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} />
       </div>
     </DnDProvider>
   );

@@ -12,7 +12,7 @@ const deviceWidths = {
 };
 
 export function Canvas() {
-  const { project, previewDevice, previewScale, setPreviewScale, selectedSectionId, selectSection } = useBuilderStore();
+  const { project, previewDevice, previewScale, setPreviewScale, selectedSectionId, selectedPageId } = useBuilderStore();
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -21,7 +21,7 @@ export function Canvas() {
 
   useEffect(() => {
     setIframeLoaded(false);
-  }, [project?.id, previewDevice]);
+  }, [project?.id, previewDevice, selectedPageId]);
 
   const handleIframeLoad = () => {
     setIframeLoaded(true);
@@ -83,11 +83,12 @@ export function Canvas() {
           <iframe
             id="preview-frame"
             ref={iframeRef}
-            src={`/preview/${project.id}${project.pages[0] ? `?page=${project.pages[0].id}` : ""}`}
+            src={`/preview/${project.id}${selectedPageId ? `?page=${selectedPageId}` : project.pages[0] ? `?page=${project.pages[0].id}` : ""}`}
             className={`w-full h-full bg-white rounded-lg shadow-2xl ${
               selectedSectionId ? "ring-2 ring-amber-500 ring-offset-2 ring-offset-slate-950" : ""
             }`}
             onLoad={handleIframeLoad}
+            title="Preview"
           />
         </div>
       </div>

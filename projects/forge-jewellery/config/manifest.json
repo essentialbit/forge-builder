@@ -3,8 +3,8 @@
   "name": "Forge Jewellery",
   "description": "Australian luxury jewellery store - premium iced out jewelry for those who stand out",
   "created": "2026-03-23T00:00:00.000Z",
-  "updated": "2026-04-20T12:00:00.000Z",
-  "status": "draft",
+  "updated": "2026-04-22T10:03:56.344Z",
+  "status": "published",
   "theme": {
     "primaryColor": "#D4AF37",
     "secondaryColor": "#0a0a0a",
@@ -43,5 +43,81 @@
         "rich-text-1"
       ]
     }
-  ]
+  ],
+  "deployConfig": {
+    "githubRepo": "essentialbit/Forge-Jewellery",
+    "githubBranch": "forge-builder/preview",
+    "netlifySiteId": "bd37d9de-6c54-490d-84f3-bd03e0dcbe7a"
+  },
+  "lastPublish": {
+    "at": "2026-04-22T10:03:56.344Z",
+    "durationMs": 13973,
+    "github": {
+      "pushed": true,
+      "sha": "ee48c6d561eb71f65b722c1138dee119dce36782",
+      "repo": "essentialbit/Forge-Jewellery",
+      "branch": "forge-builder/preview",
+      "logs": [
+        {
+          "t": 1776852222627,
+          "level": "info",
+          "msg": "Cloning essentialbit/Forge-Jewellery into /Volumes/Iron 1TBSSD/OpenClaw-Workspace/forge-builder/projects/forge-jewellery/.forge-publish/essentialbit__Forge-Jewellery…"
+        },
+        {
+          "t": 1776852225075,
+          "level": "warn",
+          "msg": "git clone failed (code 128): Cloning into '/Volumes/Iron 1TBSSD/OpenClaw-Workspace/forge-builder/projects/forge-jewellery/.forge-publish/essentialbit__Forge-Jewellery'...\nfatal: Remote branch forge-builder/preview not found in upstream origin\n"
+        },
+        {
+          "t": 1776852225075,
+          "level": "info",
+          "msg": "Attempting fresh init + push to new branch…"
+        },
+        {
+          "t": 1776852226272,
+          "level": "info",
+          "msg": "Wrote 6 files to worktree."
+        },
+        {
+          "t": 1776852227780,
+          "level": "info",
+          "msg": "Committed: [forge-builder/preview (root-commit) ee48c6d] forge-builder: publish Forge Jewellery — 2026-04-22T10:03:42.626Z\n 6 files changed, 321 insertions(+)\n create mode 100644 about/index.html\n create mode 100644 assets/site.css\n create mode 100644 forge-builder.json\n create mode 100644 index.html\n create mode 100644 robots.txt\n create mode 100644 shop/index.html\n"
+        },
+        {
+          "t": 1776852229778,
+          "level": "info",
+          "msg": "Pushed to essentialbit/Forge-Jewellery@forge-builder/preview"
+        }
+      ]
+    },
+    "netlify": {
+      "deployed": true,
+      "deployId": "69e89d06b7dde438e90e9d22",
+      "url": "https://forge-builder-demo.netlify.app",
+      "state": "ready",
+      "logs": [
+        {
+          "t": 1776852229807,
+          "level": "info",
+          "msg": "Prepared 6 files for Netlify deploy."
+        },
+        {
+          "t": 1776852231272,
+          "level": "info",
+          "msg": "Netlify deploy created: 69e89d06b7dde438e90e9d22. Need to upload 4 files."
+        },
+        {
+          "t": 1776852233203,
+          "level": "info",
+          "msg": "Uploaded 4 files."
+        },
+        {
+          "t": 1776852236344,
+          "level": "info",
+          "msg": "Netlify deploy ready at https://forge-builder-demo.netlify.app"
+        }
+      ]
+    },
+    "localUrl": "/api/projects/forge-jewellery/exported/index.html"
+  }
 }

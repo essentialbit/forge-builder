@@ -16,10 +16,11 @@ import Link from "next/link";
 
 interface ToolbarProps {
   onBrandKitClick: () => void;
+  onPublishClick: () => void;
 }
 
-export function Toolbar({ onBrandKitClick }: ToolbarProps) {
-  const { project, hasUnsavedChanges, isSaving, saveProject, publishProject } = useBuilderStore();
+export function Toolbar({ onBrandKitClick, onPublishClick }: ToolbarProps) {
+  const { project, hasUnsavedChanges, isSaving, saveProject } = useBuilderStore();
 
   return (
     <header className="h-16 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between">
@@ -82,7 +83,7 @@ export function Toolbar({ onBrandKitClick }: ToolbarProps) {
 
         <Button
           size="sm"
-          onClick={publishProject}
+          onClick={onPublishClick}
           className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
         >
           <Upload className="w-4 h-4 mr-2" />
