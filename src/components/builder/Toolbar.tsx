@@ -11,6 +11,7 @@ import {
   Check,
   Cloud,
   CloudOff,
+  Package,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -53,6 +54,13 @@ export function Toolbar({ onBrandKitClick, onPublishClick }: ToolbarProps) {
 
       {/* Right */}
       <div className="flex items-center gap-3">
+        <Link href="/admin/products" target="_blank">
+          <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:text-white">
+            <Package className="w-4 h-4 mr-2" />
+            Catalog
+          </Button>
+        </Link>
+
         <Button
           variant="outline"
           size="sm"

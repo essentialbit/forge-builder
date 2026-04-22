@@ -9,6 +9,7 @@
 
 import type { Project, Section } from '@/types/builder';
 import catalog from '@/data/catalog.json';
+import { listProducts } from '@/lib/catalog/queries';
 
 type Theme = Project['theme'];
 type CatalogProduct = {
@@ -21,6 +22,28 @@ type CatalogProduct = {
   image: string;
   materials?: string;
 };
+
+/** Prefer DB catalog when available; fall back to bundled JSON. */
+function getCatalogProducts(): CatalogProduct[] {
+  try {
+    const rows = listProducts({ status: 'active', limit: 500 });
+    if (rows.length > 0) {
+      return rows.map((p) => ({
+        sku: p.sku,
+        slug: p.slug,
+        name: p.title,
+        price: p.price,
+        compare_price: p.compareAtPrice ?? null,
+        category: p.productType ?? '',
+        image: p.featuredImage ?? '',
+        materials: '',
+      }));
+    }
+  } catch {
+    /* fall through to JSON */
+  }
+  return (catalog as { products: CatalogProduct[] }).products;
+}
 
 function escape(s: unknown): string {
   return String(s ?? '')
@@ -35,21 +58,23 @@ function formatAUD(v: number): string {
   return '$' + v.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
-const CATALOG_PRODUCTS = (catalog as { products: CatalogProduct[] }).products;
-
-function pickProducts(slugs: string[] | undefined, fallbackCount: number): CatalogProduct[] {
+function pickProducts(
+  products: CatalogProduct[],
+  slugs: string[] | undefined,
+  fallbackCount: number,
+): CatalogProduct[] {
   if (slugs && slugs.length > 0) {
-    const bySlug = new Map(CATALOG_PRODUCTS.map((p) => [p.slug, p] as const));
-    const bySku = new Map(CATALOG_PRODUCTS.map((p) => [p.sku.toLowerCase(), p] as const));
+    const bySlug = new Map(products.map((p) => [p.slug, p] as const));
+    const bySku = new Map(products.map((p) => [p.sku.toLowerCase(), p] as const));
     const resolved = slugs
       .map((s) => bySlug.get(s) ?? bySku.get(s.toLowerCase()))
       .filter((p): p is CatalogProduct => Boolean(p));
     if (resolved.length > 0) return resolved;
   }
-  return CATALOG_PRODUCTS.slice(0, fallbackCount);
+  return products.slice(0, fallbackCount);
 }
 
-function renderSection(section: Section, theme: Theme): string {
+function renderSection(section: Section, theme: Theme, products: CatalogProduct[]): string {
   const s = section.settings as Record<string, unknown>;
 
   switch (section.type) {
@@ -90,8 +115,8 @@ function renderSection(section: Section, theme: Theme): string {
       const columns = Math.max(1, Math.min(5, Number(s.columns ?? 3)));
       const showPrices = s.show_prices !== false;
       const slugs = Array.isArray(s.product_slugs) ? (s.product_slugs as string[]) : [];
-      const products = pickProducts(slugs, columns * 2);
-      const items = products
+      const picked = pickProducts(products, slugs, columns * 2);
+      const items = picked
         .slice(0, columns * 2)
         .map(
           (p) => `
@@ -120,7 +145,7 @@ function renderSection(section: Section, theme: Theme): string {
       const slugs = Array.isArray(s.category_slugs) ? (s.category_slugs as string[]) : ['rings', 'necklaces', 'bracelets', 'earrings'];
       const tiles = slugs
         .map((slug) => {
-          const sample = CATALOG_PRODUCTS.find((p) => p.category.toLowerCase() === slug.toLowerCase());
+          const sample = products.find((p) => p.category.toLowerCase() === slug.toLowerCase());
           const img = sample?.image ?? '';
           return `
     <a class="fb-category" href="/collections/${escape(slug)}">
@@ -282,6 +307,7 @@ export function renderSite(
 ): RenderedSite {
   const files: RenderedSite['files'] = [];
   const theme = project.theme;
+  const products = getCatalogProducts();
 
   // CSS
   files.push({ path: 'assets/site.css', content: baseCss() });
@@ -293,7 +319,7 @@ export function renderSite(
       .map((id) => sectionsMap.get(id))
       .filter((s): s is Section => Boolean(s));
 
-    const body = sections.map((s) => renderSection(s, theme)).join('\n');
+    const body = sections.map((s) => renderSection(s, theme, products)).join('\n');
 
     const html = `<!DOCTYPE html>
 <html lang="en">

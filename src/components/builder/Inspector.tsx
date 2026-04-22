@@ -11,6 +11,7 @@ import { Trash2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FieldType, Section } from "@/types/builder";
 import { ArrayField } from "@/components/builder/ArrayField";
+import { ProductPicker } from "@/components/builder/ProductPicker";
 
 export function Inspector() {
   const { project, selectedSectionId, updateSection, removeSection, selectSection } = useBuilderStore();
@@ -213,7 +214,14 @@ function FieldRenderer({ fieldKey, field, value, onChange }: FieldRendererProps)
         </div>
       )}
 
-      {field.type === "array" && (
+      {field.type === "array" && fieldKey === "product_slugs" && (
+        <ProductPicker
+          value={Array.isArray(value) ? (value as string[]) : []}
+          onChange={(slugs) => onChange(slugs)}
+        />
+      )}
+
+      {field.type === "array" && fieldKey !== "product_slugs" && (
         <ArrayField
           fieldKey={fieldKey}
           value={Array.isArray(value) ? (value as Parameters<typeof ArrayField>[0]["value"]) : []}

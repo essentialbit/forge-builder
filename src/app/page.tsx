@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, FolderOpen, MoreVertical, Globe, Clock, FileText } from "lucide-react";
+import { Plus, FolderOpen, MoreVertical, Globe, Clock, FileText, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -81,6 +81,14 @@ export default function ProjectsPage() {
               <h1 className="text-xl font-bold text-white">Forge Builder</h1>
               <p className="text-xs text-slate-400">Visual Website Editor</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/admin">
+              <Button variant="outline" className="border-slate-700 text-slate-300 hover:text-white">
+                <Package className="w-4 h-4 mr-2" />
+                Admin
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
