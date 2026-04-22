@@ -106,6 +106,14 @@ export function SectionRenderer({
       return <NewsletterSection settings={settings} theme={theme} isEditing={isEditing} onSelect={onSelect} isSelected={isSelected} />;
     case "footer":
       return <FooterSection settings={settings} theme={theme} isEditing={isEditing} onSelect={onSelect} isSelected={isSelected} />;
+    case "faq":
+      return <FaqSection settings={settings} theme={theme} isEditing={isEditing} onSelect={onSelect} isSelected={isSelected} />;
+    case "featured_product":
+      return <FeaturedProductSection settings={settings} theme={theme} isEditing={isEditing} onSelect={onSelect} isSelected={isSelected} />;
+    case "testimonials":
+      return <TestimonialsSection settings={settings} theme={theme} isEditing={isEditing} onSelect={onSelect} isSelected={isSelected} />;
+    case "spacer":
+      return <div onClick={onSelect} style={{ height: (settings.height as number) || 80 }} className={`${isEditing ? "cursor-pointer" : ""} ${isSelected ? "ring-2 ring-amber-500" : ""}`} />;
     default:
       return (
         <div className="p-8 bg-slate-100 text-center text-slate-500">
@@ -538,5 +546,86 @@ function FooterSection({ settings, theme, isEditing, onSelect, isSelected }: Sec
         </div>
       </div>
     </footer>
+  );
+}
+
+function FaqSection({ settings, theme, isEditing, onSelect, isSelected }: SectionProps) {
+  const title = (settings.title as string) || "FAQ";
+  const subtitle = (settings.subtitle as string) || "";
+  const items = Array.isArray(settings.items) ? (settings.items as Array<{ question?: string; answer?: string }>) : [];
+  return (
+    <section
+      onClick={onSelect}
+      className={`py-16 px-6 ${isEditing ? "cursor-pointer" : ""} ${isSelected ? "ring-2 ring-amber-500" : ""}`}
+      style={{ backgroundColor: theme.accentColor, color: theme.secondaryColor }}
+    >
+      <div className="max-w-2xl mx-auto">
+        <h2 className="text-3xl font-bold text-center mb-2" style={{ fontFamily: theme.fontFamily }}>{title}</h2>
+        {subtitle && <p className="text-center opacity-70 mb-8">{subtitle}</p>}
+        <div className="space-y-1">
+          {items.map((it, i) => (
+            <details key={i} className="border-b border-black/10 py-4" open={i === 0}>
+              <summary className="font-semibold cursor-pointer">{it.question ?? ""}</summary>
+              <p className="mt-2 opacity-80">{it.answer ?? ""}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeaturedProductSection({ settings, theme, isEditing, onSelect, isSelected }: SectionProps) {
+  const slugs = Array.isArray(settings.product_slugs) ? (settings.product_slugs as string[]) : [];
+  const showDesc = settings.show_description !== false;
+  const layout = String(settings.layout ?? "split");
+  const catalog = useCatalog();
+  const product = slugs.length > 0 ? catalog.products.find((p) => p.slug === slugs[0] || p.sku.toLowerCase() === slugs[0].toLowerCase()) : catalog.products[0];
+  if (!product) {
+    return (
+      <section onClick={onSelect} className={`py-16 px-6 text-center opacity-60 ${isEditing ? "cursor-pointer" : ""} ${isSelected ? "ring-2 ring-amber-500" : ""}`} style={{ backgroundColor: theme.secondaryColor, color: theme.accentColor }}>
+        Pick a product for this section
+      </section>
+    );
+  }
+  const flip = layout === "split-reverse";
+  return (
+    <section onClick={onSelect} className={`py-16 px-6 ${isEditing ? "cursor-pointer" : ""} ${isSelected ? "ring-2 ring-amber-500" : ""}`} style={{ backgroundColor: theme.accentColor }}>
+      <div className={`max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 ${flip ? "md:flex-row-reverse" : ""}`}>
+        <div className={flip ? "md:order-2" : ""}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={product.image} alt={product.name} className="w-full rounded-lg" style={{ background: "#f5f5f5" }} />
+        </div>
+        <div className="flex flex-col justify-center">
+          <h2 className="text-3xl font-bold mb-3" style={{ color: theme.secondaryColor, fontFamily: theme.fontFamily }}>{product.name}</h2>
+          <p className="text-xl font-bold mb-4" style={{ color: theme.primaryColor }}>{formatAUD(product.price)}</p>
+          {showDesc && product.materials && <p className="mb-6 opacity-80" style={{ color: theme.secondaryColor }}>{product.materials}</p>}
+          <button className="px-6 py-3 rounded-md font-semibold self-start" style={{ background: theme.primaryColor, color: theme.secondaryColor }}>
+            Add to cart
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TestimonialsSection({ settings, theme, isEditing, onSelect, isSelected }: SectionProps) {
+  const title = (settings.title as string) || "What our customers say";
+  const items = Array.isArray(settings.items) ? (settings.items as Array<{ quote?: string; author?: string; rating?: number }>) : [];
+  return (
+    <section onClick={onSelect} className={`py-16 px-6 ${isEditing ? "cursor-pointer" : ""} ${isSelected ? "ring-2 ring-amber-500" : ""}`} style={{ backgroundColor: theme.secondaryColor, color: theme.accentColor }}>
+      <div className="max-w-6xl mx-auto">
+        <h2 className="text-3xl font-bold text-center mb-10" style={{ fontFamily: theme.fontFamily }}>{title}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {items.map((t, i) => (
+            <figure key={i} className="bg-white rounded-lg p-6 text-slate-900 shadow">
+              <div className="text-amber-500 mb-2">{"★".repeat(Math.max(1, Math.min(5, Number(t.rating ?? 5))))}</div>
+              <blockquote className="italic mb-3">“{t.quote ?? ""}”</blockquote>
+              <figcaption className="text-sm opacity-60">— {t.author ?? ""}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

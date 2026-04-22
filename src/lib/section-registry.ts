@@ -269,6 +269,93 @@ export const sectionRegistry: Record<string, SectionDefinition> = {
   },
 };
 
+// Additional sections
+sectionRegistry.faq = {
+  type: 'faq' as never,
+  name: 'FAQ',
+  description: 'Accordion-style frequently asked questions',
+  icon: 'HelpCircle',
+  category: 'text',
+  defaultSettings: {
+    title: 'Frequently asked questions',
+    subtitle: '',
+    items: [
+      { question: 'Do you ship internationally?', answer: 'Yes, we ship worldwide.' },
+      { question: 'What is the return policy?', answer: '30-day no-questions-asked returns.' },
+      { question: 'How long does delivery take?', answer: '2–5 business days within Australia.' },
+    ],
+    color_scheme: '',
+  },
+  schema: {
+    title: { type: 'text', label: 'Title' },
+    subtitle: { type: 'textarea', label: 'Subtitle' },
+    items: { type: 'array', label: 'Questions' },
+    color_scheme: { type: 'color_scheme', label: 'Colour scheme' },
+  },
+};
+
+sectionRegistry.featured_product = {
+  type: 'featured_product' as never,
+  name: 'Featured Product',
+  description: 'Highlight a single product with large image and details',
+  icon: 'Star',
+  category: 'products',
+  defaultSettings: {
+    product_slugs: [],
+    layout: 'split',
+    show_description: true,
+    color_scheme: '',
+  },
+  schema: {
+    product_slugs: { type: 'array', label: 'Product' },
+    layout: {
+      type: 'select',
+      label: 'Layout',
+      options: [
+        { label: 'Image left, text right', value: 'split' },
+        { label: 'Image right, text left', value: 'split-reverse' },
+        { label: 'Stacked', value: 'stacked' },
+      ],
+    },
+    show_description: { type: 'toggle', label: 'Show description' },
+    color_scheme: { type: 'color_scheme', label: 'Colour scheme' },
+  },
+};
+
+sectionRegistry.testimonials = {
+  type: 'testimonials' as never,
+  name: 'Testimonials',
+  description: 'Customer quotes with optional avatars',
+  icon: 'MessageCircle',
+  category: 'social',
+  defaultSettings: {
+    title: 'What our customers say',
+    items: [
+      { quote: 'Absolutely stunning quality and fast shipping.', author: 'Sarah K.', rating: 5 },
+      { quote: 'Best jewellery I have ever owned.', author: 'James M.', rating: 5 },
+      { quote: 'Real gold finish, 10/10 would buy again.', author: 'Emily R.', rating: 5 },
+    ],
+    color_scheme: '',
+  },
+  schema: {
+    title: { type: 'text', label: 'Title' },
+    items: { type: 'array', label: 'Testimonials' },
+    color_scheme: { type: 'color_scheme', label: 'Colour scheme' },
+  },
+};
+
+sectionRegistry.spacer = {
+  type: 'spacer' as never,
+  name: 'Spacer',
+  description: 'Empty vertical space',
+  icon: 'Minus',
+  category: 'text',
+  defaultSettings: { height: 80 },
+  schema: {
+    height: { type: 'number', label: 'Height (px)', min: 20, max: 400, step: 10 },
+  },
+};
+
 export const sectionCategories = [
   { id: 'hero', name: 'Hero', icon: 'Sparkles' },
   { id: 'text', name: 'Text', icon: 'FileText' },

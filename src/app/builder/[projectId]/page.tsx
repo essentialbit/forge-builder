@@ -11,6 +11,8 @@ import { BrandKit } from "@/components/builder/BrandKit";
 import { DnDProvider } from "@/components/builder/DnDContext";
 import { PublishDialog } from "@/components/builder/PublishDialog";
 import { KeyboardShortcuts } from "@/components/builder/KeyboardShortcuts";
+import { CommandPalette } from "@/components/builder/CommandPalette";
+import { ErrorBoundary } from "@/components/builder/ErrorBoundary";
 import { useState } from "react";
 
 export default function BuilderPage() {
@@ -53,8 +55,10 @@ export default function BuilderPage() {
   }
 
   return (
+    <ErrorBoundary>
     <DnDProvider>
       <KeyboardShortcuts />
+      <CommandPalette />
       <div className="h-screen flex flex-col bg-slate-950 overflow-hidden">
         {/* Top Toolbar */}
         <Toolbar
@@ -83,5 +87,6 @@ export default function BuilderPage() {
         <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} />
       </div>
     </DnDProvider>
+    </ErrorBoundary>
   );
 }

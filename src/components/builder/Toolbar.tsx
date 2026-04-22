@@ -79,6 +79,13 @@ export function Toolbar({ onBrandKitClick, onPublishClick }: ToolbarProps) {
 
       {/* Right */}
       <div className="flex items-center gap-3">
+        <kbd
+          className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono text-slate-500 px-1.5 py-0.5 border border-slate-700 rounded bg-slate-800/50"
+          title="Open command palette"
+        >
+          ⌘K
+        </kbd>
+
         <Link href="/admin/products" target="_blank">
           <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:text-white">
             <Package className="w-4 h-4 mr-2" />

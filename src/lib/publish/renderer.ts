@@ -313,6 +313,83 @@ function _renderSectionInner(
 </footer>`;
     }
 
+    case 'faq': {
+      const title = escape(s.title ?? 'Frequently asked questions');
+      const subtitle = escape(s.subtitle ?? '');
+      const items = Array.isArray(s.items) ? (s.items as Array<{ question?: string; answer?: string }>) : [];
+      const body = items
+        .map(
+          (it, i) => `
+      <details class="fb-faq-item" ${i === 0 ? 'open' : ''}>
+        <summary>${escape(it.question ?? '')}</summary>
+        <p>${escape(it.answer ?? '')}</p>
+      </details>`,
+        )
+        .join('');
+      return `
+<section class="fb-section fb-faq">
+  <div class="fb-inner" style="margin:0 auto;padding:0 1.5rem;max-width:760px">
+    <h2 style="text-align:center;font-size:2rem;font-weight:700;margin-bottom:0.5rem">${title}</h2>
+    ${subtitle ? `<p style="text-align:center;opacity:0.7;margin-bottom:2rem">${subtitle}</p>` : ''}
+    ${body}
+  </div>
+</section>`;
+    }
+
+    case 'featured_product': {
+      const slugs = Array.isArray(s.product_slugs) ? (s.product_slugs as string[]) : [];
+      const picked = pickProducts(products, slugs, 1)[0];
+      if (!picked) return '<!-- no product selected -->';
+      const layout = String(s.layout ?? 'split');
+      const showDesc = s.show_description !== false;
+      const flip = layout === 'split-reverse';
+      const stacked = layout === 'stacked';
+      const cartJson = JSON.stringify({ sku: picked.sku, name: picked.name, price: picked.price, image: picked.image, slug: picked.slug }).replace(/'/g, '&#39;');
+      const fullDesc = fullProductsCache.get(picked.slug)?.description ?? '';
+      return `
+<section class="fb-section">
+  <div class="fb-inner" style="margin:0 auto;padding:0 1.5rem;display:${stacked ? 'block' : 'grid'};grid-template-columns:${flip ? '1fr 1fr' : '1fr 1fr'};gap:3rem;${flip ? 'direction:rtl;' : ''}">
+    <div ${flip ? 'style="direction:ltr"' : ''}>
+      <img src="${escape(picked.image)}" alt="${escape(picked.name)}" style="width:100%;border-radius:var(--fb-radius);background:#f5f5f5" loading="lazy">
+    </div>
+    <div ${flip ? 'style="direction:ltr"' : ''}>
+      <h2 style="font-size:2rem;font-weight:700;margin-bottom:1rem">${escape(picked.name)}</h2>
+      <div style="font-size:1.5rem;font-weight:700;margin-bottom:1rem">${formatAUD(picked.price)}</div>
+      ${showDesc && fullDesc ? `<div class="fb-rich" style="margin-bottom:1.5rem">${fullDesc}</div>` : ''}
+      <button onclick='window.fbCart?.add(${cartJson})' style="padding:1rem 2rem;background:var(--fb-accent);color:var(--fb-on-accent);border:none;border-radius:var(--fb-radius);font-weight:700;cursor:pointer">Add to cart</button>
+      <a href="/products/${escape(picked.slug)}/" style="margin-left:1rem;color:var(--fb-accent);text-decoration:underline">View details</a>
+    </div>
+  </div>
+</section>`;
+    }
+
+    case 'testimonials': {
+      const title = escape(s.title ?? 'What our customers say');
+      const items = Array.isArray(s.items) ? (s.items as Array<{ quote?: string; author?: string; rating?: number }>) : [];
+      const cards = items
+        .map(
+          (it) => `
+    <figure style="background:#fff;color:#111;padding:1.5rem;border-radius:var(--fb-radius);box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+      <div style="color:#f59e0b;margin-bottom:0.75rem">${'★'.repeat(Math.max(1, Math.min(5, Number(it.rating ?? 5))))}</div>
+      <blockquote style="font-style:italic;margin-bottom:1rem;font-size:0.95rem">“${escape(it.quote ?? '')}”</blockquote>
+      <figcaption style="font-weight:600;font-size:0.85rem;opacity:0.7">— ${escape(it.author ?? '')}</figcaption>
+    </figure>`,
+        )
+        .join('');
+      return `
+<section class="fb-section">
+  <div class="fb-inner" style="margin:0 auto;padding:0 1.5rem">
+    <h2 style="text-align:center;font-size:2rem;font-weight:700;margin-bottom:2rem">${title}</h2>
+    <div class="fb-grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">${cards}</div>
+  </div>
+</section>`;
+    }
+
+    case 'spacer': {
+      const h = Number(s.height ?? 80);
+      return `<div style="height:${h}px"></div>`;
+    }
+
     default:
       return `<!-- unknown section type: ${section.type} -->`;
   }
@@ -373,12 +450,22 @@ a{color:inherit;text-decoration:none}
 .fb-footer li{margin-bottom:0.5rem;opacity:0.8;font-size:0.9rem}
 .fb-social{text-align:center;padding:1.5rem 0;opacity:0.8;font-size:0.9rem}
 .fb-copy{text-align:center;opacity:0.6;font-size:0.85rem}
+.fb-faq-item{border-bottom:1px solid rgba(0,0,0,0.1);padding:1rem 0}
+.fb-faq-item summary{font-weight:600;cursor:pointer;font-size:1rem;list-style:none;display:flex;align-items:center;justify-content:space-between}
+.fb-faq-item summary::-webkit-details-marker{display:none}
+.fb-faq-item summary::after{content:'+';font-size:1.5rem;opacity:0.5;transition:transform 0.2s}
+.fb-faq-item[open] summary::after{transform:rotate(45deg)}
+.fb-faq-item p{margin-top:0.75rem;opacity:0.8;line-height:1.6}
 `;
 }
 
 export interface RenderedSite {
   files: Array<{ path: string; content: string }>; // path relative to site root
 }
+
+// Per-render cache used by featured_product to get description
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let fullProductsCache: Map<string, any> = new Map();
 
 /* =============================================================
  * Theme CSS variables + reset injected per site
@@ -731,6 +818,8 @@ export function renderSite(
   const theme = normalizeTheme(project.theme);
   const products = getCatalogProducts();
   const fullProducts = getFullProducts();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fullProductsCache = new Map(fullProducts.map((p: any) => [p.slug, p]));
   const collections = getCollections();
   const fontsHref = googleFontsHref([theme.fontFamily, theme.headingFontFamily ?? '']);
 

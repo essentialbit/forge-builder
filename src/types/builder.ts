@@ -9,7 +9,11 @@ export type SectionType =
   | 'image-block'
   | 'trust-badges'
   | 'newsletter'
-  | 'footer';
+  | 'footer'
+  | 'faq'
+  | 'featured_product'
+  | 'testimonials'
+  | 'spacer';
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
