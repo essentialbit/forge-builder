@@ -9,7 +9,8 @@
 
 import type { Project, Section } from '@/types/builder';
 import catalog from '@/data/catalog.json';
-import { listProducts } from '@/lib/catalog/queries';
+import { listProducts, listCollections, productsInCollection } from '@/lib/catalog/queries';
+import { normalizeTheme, getScheme, radiusValue, googleFontsHref } from '@/lib/theme';
 
 type Theme = Project['theme'];
 type CatalogProduct = {
@@ -24,7 +25,7 @@ type CatalogProduct = {
 };
 
 /** Prefer DB catalog when available; fall back to bundled JSON. */
-function getCatalogProducts(): CatalogProduct[] {
+export function getCatalogProducts(): CatalogProduct[] {
   try {
     const rows = listProducts({ status: 'active', limit: 500 });
     if (rows.length > 0) {
@@ -43,6 +44,23 @@ function getCatalogProducts(): CatalogProduct[] {
     /* fall through to JSON */
   }
   return (catalog as { products: CatalogProduct[] }).products;
+}
+
+/** Full DB product (includes description). Returns [] if DB not available. */
+function getFullProducts() {
+  try {
+    return listProducts({ status: 'active', limit: 500 });
+  } catch {
+    return [];
+  }
+}
+
+function getCollections() {
+  try {
+    return listCollections();
+  } catch {
+    return [];
+  }
 }
 
 function escape(s: unknown): string {
@@ -116,18 +134,23 @@ function renderSection(section: Section, theme: Theme, products: CatalogProduct[
       const showPrices = s.show_prices !== false;
       const slugs = Array.isArray(s.product_slugs) ? (s.product_slugs as string[]) : [];
       const picked = pickProducts(products, slugs, columns * 2);
+      const showCart = s.show_add_to_cart !== false;
       const items = picked
         .slice(0, columns * 2)
-        .map(
-          (p) => `
+        .map((p) => {
+          const cartJson = JSON.stringify({ sku: p.sku, name: p.name, price: p.price, image: p.image, slug: p.slug }).replace(/'/g, '&#39;');
+          return `
     <article class="fb-product">
-      <div class="fb-product-img"><img src="${escape(p.image)}" alt="${escape(p.name)}" loading="lazy"></div>
-      <div class="fb-product-body">
-        <h3>${escape(p.name)}</h3>
-        ${showPrices ? `<div class="fb-product-price">${formatAUD(p.price)}${p.compare_price && p.compare_price > p.price ? ` <s>${formatAUD(p.compare_price)}</s>` : ''}</div>` : ''}
-      </div>
-    </article>`,
-        )
+      <a href="/products/${escape(p.slug)}/" style="display:block;color:inherit;text-decoration:none">
+        <div class="fb-product-img"><img src="${escape(p.image)}" alt="${escape(p.name)}" loading="lazy"></div>
+        <div class="fb-product-body">
+          <h3>${escape(p.name)}</h3>
+          ${showPrices ? `<div class="fb-product-price">${formatAUD(p.price)}${p.compare_price && p.compare_price > p.price ? ` <s>${formatAUD(p.compare_price)}</s>` : ''}</div>` : ''}
+        </div>
+      </a>
+      ${showCart ? `<button onclick='window.fbCart?.add(${cartJson})' style="margin:0 1rem 1rem;padding:0.5rem 1rem;background:var(--fb-accent,#000);color:var(--fb-on-accent,#fff);border:none;border-radius:var(--fb-radius,8px);font-weight:600;cursor:pointer;width:calc(100% - 2rem)">Add to cart</button>` : ''}
+    </article>`;
+        })
         .join('');
       return `
 <section class="fb-section fb-product-grid" style="background:${escape(theme.secondaryColor)};color:${escape(theme.accentColor)}">
@@ -148,7 +171,7 @@ function renderSection(section: Section, theme: Theme, products: CatalogProduct[
           const sample = products.find((p) => p.category.toLowerCase() === slug.toLowerCase());
           const img = sample?.image ?? '';
           return `
-    <a class="fb-category" href="/collections/${escape(slug)}">
+    <a class="fb-category" href="/collections/${escape(slug)}/">
       <img src="${escape(img)}" alt="${escape(slug)}" loading="lazy">
       <span>${escape(slug.charAt(0).toUpperCase() + slug.slice(1))}</span>
     </a>`;
@@ -195,16 +218,38 @@ function renderSection(section: Section, theme: Theme, products: CatalogProduct[
       const heading = escape(s.heading ?? 'Subscribe');
       const description = escape(s.description ?? '');
       const buttonText = escape(s.button_text ?? 'Subscribe');
+      const listId = escape(s.list_id ?? 'newsletter');
+      const formsEndpoint = escape(process.env.FORGE_FORMS_ENDPOINT ?? '');
+      // If published to Netlify without a backend, fall back to mailto: on form submit.
       return `
 <section class="fb-newsletter" style="background:${escape(theme.primaryColor)};color:${escape(theme.secondaryColor)}">
   <div class="fb-inner fb-newsletter-inner">
     <h2 style="font-family:${escape(theme.fontFamily)}">${heading}</h2>
     ${description ? `<p>${description}</p>` : ''}
-    <form class="fb-newsletter-form" onsubmit="event.preventDefault();alert('Thanks — this is a preview-only form.');">
+    <form class="fb-newsletter-form" onsubmit="return fbNewsletterSubmit(event,'${listId}','${formsEndpoint}')">
       <input type="email" name="email" required placeholder="your@email.com">
       <button type="submit" style="background:${escape(theme.secondaryColor)};color:${escape(theme.primaryColor)}">${buttonText}</button>
     </form>
+    <p id="fb-nl-msg" style="display:none;margin-top:1rem;opacity:0.8"></p>
   </div>
+  <script>
+    function fbNewsletterSubmit(ev, listId, endpoint){
+      ev.preventDefault();
+      const form = ev.target;
+      const email = form.email.value;
+      const msg = document.getElementById('fb-nl-msg');
+      msg.style.display = 'block';
+      msg.textContent = 'Submitting…';
+      (endpoint
+        ? fetch(endpoint, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({type:'newsletter', payload:{email, listId}}) })
+        : Promise.resolve({ok:true})
+      ).then(r => r.ok
+        ? (msg.textContent = 'Thanks! You\u2019re subscribed.', form.reset())
+        : (msg.textContent = 'Could not subscribe. Please try again later.')
+      ).catch(() => msg.textContent = 'Could not subscribe. Please try again later.');
+      return false;
+    }
+  <\/script>
 </section>`;
     }
 
@@ -301,16 +346,357 @@ export interface RenderedSite {
   files: Array<{ path: string; content: string }>; // path relative to site root
 }
 
+/* =============================================================
+ * Theme CSS variables + reset injected per site
+ * ============================================================= */
+function themeCss(theme: ReturnType<typeof normalizeTheme>): string {
+  const def = getScheme(theme);
+  const radius = radiusValue(theme.radiusScale);
+  const spacing = theme.spacingScale === 'tight' ? '2rem' : theme.spacingScale === 'relaxed' ? '6rem' : '4rem';
+  const maxW = `${theme.maxContentWidth ?? 1200}px`;
+  return `
+:root {
+  --fb-bg: ${def.background};
+  --fb-text: ${def.text};
+  --fb-accent: ${def.accent};
+  --fb-on-accent: ${def.onAccent};
+  --fb-muted: ${def.muted};
+  --fb-border: ${def.border};
+  --fb-radius: ${radius};
+  --fb-spacing: ${spacing};
+  --fb-max-w: ${maxW};
+  --fb-font: ${JSON.stringify(theme.fontFamily)};
+  --fb-heading-font: ${JSON.stringify(theme.headingFontFamily ?? theme.fontFamily)};
+}
+html,body{font-family:var(--fb-font),system-ui,sans-serif;background:var(--fb-bg);color:var(--fb-text)}
+h1,h2,h3,h4{font-family:var(--fb-heading-font),system-ui,sans-serif}
+.fb-inner{max-width:var(--fb-max-w)}
+.fb-section{padding:var(--fb-spacing) 0}
+.fb-btn{border-radius:var(--fb-radius)}
+.fb-product{border-radius:var(--fb-radius)}
+.fb-category{border-radius:var(--fb-radius)}
+.fb-newsletter-form input,.fb-newsletter-form button{border-radius:var(--fb-radius)}
+/* Animations */
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes fade-up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes zoom-in{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+.fb-anim-fade-in{animation:fade-in 0.8s ease both}
+.fb-anim-fade-up{animation:fade-up 0.8s ease both}
+.fb-anim-zoom-in{animation:zoom-in 0.8s ease both}
+/* Cart drawer (used on all pages via cart.js) */
+#fb-cart-drawer{position:fixed;top:0;right:-420px;height:100vh;width:min(420px,90vw);background:#fff;color:#111;box-shadow:-10px 0 30px rgba(0,0,0,0.2);transition:right 0.3s ease;z-index:9999;display:flex;flex-direction:column}
+#fb-cart-drawer.open{right:0}
+#fb-cart-drawer header{padding:1.25rem;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+#fb-cart-drawer .fb-cart-items{flex:1;overflow-y:auto;padding:1rem}
+#fb-cart-drawer footer{padding:1.25rem;border-top:1px solid #eee}
+#fb-cart-drawer .fb-cart-total{display:flex;justify-content:space-between;font-weight:700;margin-bottom:1rem}
+#fb-cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9998;display:none}
+#fb-cart-overlay.open{display:block}
+.fb-header{position:sticky;top:0;z-index:50;background:var(--fb-bg);border-bottom:1px solid var(--fb-border);padding:1rem 0}
+.fb-header-inner{max-width:var(--fb-max-w);margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;gap:2rem}
+.fb-header-inner .fb-brand{font-weight:800;font-size:1.25rem}
+.fb-header-inner nav{flex:1;display:flex;gap:1.5rem}
+.fb-header-inner a{color:var(--fb-text);text-decoration:none;font-size:0.95rem}
+.fb-cart-btn{background:none;border:1px solid var(--fb-border);padding:0.5rem 1rem;cursor:pointer;font-weight:600;border-radius:var(--fb-radius);color:var(--fb-text)}
+`;
+}
+
+/* =============================================================
+ * Cart: tiny client runtime (no framework) using localStorage
+ * ============================================================= */
+function cartJs(): string {
+  return `/* Forge Builder — cart runtime */
+(function(){
+  const KEY = 'fb_cart_v1';
+  function read(){ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } }
+  function write(c){ localStorage.setItem(KEY, JSON.stringify(c)); update(); }
+  function find(c, sku){ return c.findIndex(i => i.sku === sku); }
+  function add(item){
+    const c = read(); const i = find(c, item.sku);
+    if (i >= 0) c[i].qty = (c[i].qty||1) + (item.qty||1);
+    else c.push(Object.assign({qty:1}, item));
+    write(c); open();
+  }
+  function remove(sku){ write(read().filter(i => i.sku !== sku)); }
+  function setQty(sku, qty){
+    const c = read(); const i = find(c, sku); if (i<0) return;
+    if (qty<=0) c.splice(i,1); else c[i].qty = qty; write(c);
+  }
+  function total(c){ return c.reduce((s,i)=>s + (i.price||0) * (i.qty||1), 0); }
+  function money(n){ return '$' + Number(n).toFixed(2); }
+  function escape(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function render(){
+    const c = read();
+    const el = document.querySelector('#fb-cart-items');
+    const tot = document.querySelector('#fb-cart-total');
+    const badge = document.querySelectorAll('.fb-cart-count');
+    if (!el) return;
+    if (c.length === 0) {
+      el.innerHTML = '<p style="opacity:0.5;text-align:center;padding:2rem">Your cart is empty.</p>';
+    } else {
+      el.innerHTML = c.map(i => \`
+        <div style="display:flex;gap:0.75rem;padding:0.75rem 0;border-bottom:1px solid #eee">
+          <img src="\${escape(i.image)}" alt="" style="width:60px;height:60px;object-fit:cover;border-radius:4px;background:#f5f5f5">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:0.9rem">\${escape(i.name)}</div>
+            <div style="font-size:0.8rem;opacity:0.6">\${escape(i.sku)}</div>
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
+              <button onclick="window.fbCart.setQty('\${escape(i.sku)}',\${i.qty-1})" style="width:24px;height:24px;border:1px solid #ddd;background:#fff;border-radius:4px">−</button>
+              <span>\${i.qty}</span>
+              <button onclick="window.fbCart.setQty('\${escape(i.sku)}',\${i.qty+1})" style="width:24px;height:24px;border:1px solid #ddd;background:#fff;border-radius:4px">+</button>
+              <button onclick="window.fbCart.remove('\${escape(i.sku)}')" style="margin-left:auto;color:#c00;background:none;border:none;cursor:pointer;font-size:0.85rem">Remove</button>
+            </div>
+          </div>
+          <div style="font-weight:700">\${money(i.price * i.qty)}</div>
+        </div>\`).join('');
+    }
+    if (tot) tot.textContent = money(total(c));
+    badge.forEach(b => b.textContent = c.reduce((s,i)=>s+(i.qty||1),0));
+  }
+  function open(){ document.getElementById('fb-cart-drawer')?.classList.add('open'); document.getElementById('fb-cart-overlay')?.classList.add('open'); }
+  function close(){ document.getElementById('fb-cart-drawer')?.classList.remove('open'); document.getElementById('fb-cart-overlay')?.classList.remove('open'); }
+  function update(){ render(); }
+  async function checkout(){
+    const c = read();
+    if (c.length === 0) { alert('Your cart is empty.'); return; }
+    try {
+      const res = await fetch('/api/checkout', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({items:c}) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+        else alert('Checkout ready. Demo site — no payment processor configured.');
+      } else {
+        alert('Checkout is not yet configured for this site.');
+      }
+    } catch {
+      alert('Checkout is not yet configured for this site.');
+    }
+  }
+  window.fbCart = { add, remove, setQty, open, close, render, read, checkout };
+  document.addEventListener('DOMContentLoaded', render);
+})();
+`;
+}
+
+/* =============================================================
+ * Header + Footer (shared across product/collection pages)
+ * ============================================================= */
+function commonHeader(project: Project, theme: ReturnType<typeof normalizeTheme>): string {
+  const pages = project.pages.slice(0, 5);
+  const navLinks = pages
+    .map((p, i) => `<a href="${i === 0 ? '/' : `/${p.slug.replace(/^\/+/, '').replace(/\/+$/, '') || p.id}/`}">${escape(p.name)}</a>`)
+    .join('');
+  return `<header class="fb-header">
+  <div class="fb-header-inner">
+    <a href="/" class="fb-brand" style="font-family:var(--fb-heading-font)">${theme.logo ? `<img src="${escape(theme.logo)}" alt="${escape(project.name)}" style="max-height:40px">` : escape(project.name)}</a>
+    <nav>${navLinks}</nav>
+    <button class="fb-cart-btn" onclick="window.fbCart?.open()">Cart (<span class="fb-cart-count">0</span>)</button>
+  </div>
+</header>`;
+}
+
+function cartDrawer(): string {
+  return `<div id="fb-cart-overlay" onclick="window.fbCart?.close()"></div>
+<aside id="fb-cart-drawer" aria-label="Shopping cart">
+  <header>
+    <h2 style="margin:0;font-size:1.1rem">Your cart</h2>
+    <button onclick="window.fbCart?.close()" style="background:none;border:none;font-size:1.5rem;cursor:pointer">×</button>
+  </header>
+  <div class="fb-cart-items" id="fb-cart-items"></div>
+  <footer>
+    <div class="fb-cart-total">
+      <span>Total</span>
+      <span id="fb-cart-total">$0.00</span>
+    </div>
+    <button onclick="window.fbCart?.checkout()" style="width:100%;padding:0.875rem;background:var(--fb-accent);color:var(--fb-on-accent);border:none;border-radius:var(--fb-radius);font-weight:700;cursor:pointer">Checkout</button>
+  </footer>
+</aside>`;
+}
+
+/* =============================================================
+ * Product detail page
+ * ============================================================= */
+function renderProductPage(
+  project: Project,
+  theme: ReturnType<typeof normalizeTheme>,
+  p: Awaited<ReturnType<typeof listProducts>>[number],
+  fontsHref: string,
+): string {
+  const safeDesc = (p.description || '').toString();
+  const title = `${escape(p.title)} — ${escape(project.name)}`;
+  const comparePrice = p.compareAtPrice && p.compareAtPrice > p.price ? p.compareAtPrice : null;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title}</title>
+<meta name="description" content="${escape(p.seoDescription || p.title)}">
+<meta property="og:title" content="${escape(p.title)}">
+<meta property="og:type" content="product">
+<meta property="og:image" content="${escape(p.featuredImage || '')}">
+${fontsHref ? `<link rel="stylesheet" href="${fontsHref}">` : ''}
+<link rel="stylesheet" href="/assets/site.css">
+<script defer src="/assets/cart.js"><\/script>
+</head>
+<body>
+${commonHeader(project, theme)}
+${cartDrawer()}
+
+<section class="fb-section">
+  <div class="fb-inner" style="margin:0 auto;padding:0 1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:3rem">
+    <div>
+      <img src="${escape(p.featuredImage)}" alt="${escape(p.title)}" style="width:100%;border-radius:var(--fb-radius);background:#f5f5f5">
+    </div>
+    <div>
+      <p style="text-transform:uppercase;letter-spacing:0.1em;font-size:0.75rem;opacity:0.6;margin-bottom:0.5rem">${escape(p.productType)}</p>
+      <h1 style="font-size:2.25rem;font-weight:700;line-height:1.15;margin-bottom:1rem">${escape(p.title)}</h1>
+      <div style="display:flex;align-items:baseline;gap:0.75rem;margin-bottom:1.5rem">
+        <span style="font-size:1.75rem;font-weight:700">${formatAUD(p.price)}</span>
+        ${comparePrice ? `<span style="text-decoration:line-through;opacity:0.5">${formatAUD(comparePrice)}</span>` : ''}
+      </div>
+      <div class="fb-rich" style="margin-bottom:2rem">${safeDesc}</div>
+      ${p.inStock
+        ? `<button onclick='window.fbCart.add(${JSON.stringify({
+            sku: p.sku,
+            name: p.title,
+            price: p.price,
+            image: p.featuredImage,
+            slug: p.slug,
+          }).replace(/'/g, "&#39;")})' style="width:100%;padding:1rem;background:var(--fb-accent);color:var(--fb-on-accent);border:none;border-radius:var(--fb-radius);font-weight:700;font-size:1rem;cursor:pointer">Add to cart</button>`
+        : `<button disabled style="width:100%;padding:1rem;background:#ddd;color:#888;border:none;border-radius:var(--fb-radius);font-weight:700">Out of stock</button>`}
+      <div style="margin-top:1.5rem;font-size:0.85rem;opacity:0.6">
+        SKU: <code>${escape(p.sku)}</code>
+      </div>
+    </div>
+  </div>
+</section>
+</body>
+</html>`;
+}
+
+function renderCollectionPage(
+  project: Project,
+  theme: ReturnType<typeof normalizeTheme>,
+  c: Awaited<ReturnType<typeof listCollections>>[number],
+  items: Awaited<ReturnType<typeof listProducts>>,
+  fontsHref: string,
+): string {
+  const cards = items
+    .map(
+      (p) => `<a href="/products/${escape(p.slug)}/" style="background:#fff;color:#111;border-radius:var(--fb-radius);overflow:hidden;display:block;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+  <div style="aspect-ratio:1/1;background:#f5f5f5"><img src="${escape(p.featuredImage)}" alt="${escape(p.title)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"></div>
+  <div style="padding:0.875rem">
+    <div style="font-weight:600;font-size:0.92rem;line-height:1.3;margin-bottom:0.25rem">${escape(p.title)}</div>
+    <div style="font-weight:700">${formatAUD(p.price)}</div>
+  </div>
+</a>`,
+    )
+    .join('');
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escape(c.title)} — ${escape(project.name)}</title>
+<meta name="description" content="${escape(c.seoDescription || c.description || c.title)}">
+${fontsHref ? `<link rel="stylesheet" href="${fontsHref}">` : ''}
+<link rel="stylesheet" href="/assets/site.css">
+<script defer src="/assets/cart.js"><\/script>
+</head>
+<body>
+${commonHeader(project, theme)}
+${cartDrawer()}
+
+<section class="fb-section">
+  <div class="fb-inner" style="margin:0 auto;padding:0 1.5rem">
+    <h1 style="font-size:2.5rem;font-weight:700;text-align:center;margin-bottom:0.5rem">${escape(c.title)}</h1>
+    ${c.description ? `<p style="text-align:center;opacity:0.7;margin-bottom:2rem">${escape(c.description)}</p>` : '<div style="margin-bottom:2rem"></div>'}
+    <p style="text-align:center;opacity:0.6;font-size:0.9rem;margin-bottom:2rem">${items.length} product${items.length === 1 ? '' : 's'}</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1.5rem">${cards}</div>
+  </div>
+</section>
+</body>
+</html>`;
+}
+
+function renderCartPage(
+  project: Project,
+  theme: ReturnType<typeof normalizeTheme>,
+  fontsHref: string,
+): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cart — ${escape(project.name)}</title>
+${fontsHref ? `<link rel="stylesheet" href="${fontsHref}">` : ''}
+<link rel="stylesheet" href="/assets/site.css">
+<script defer src="/assets/cart.js"><\/script>
+</head>
+<body>
+${commonHeader(project, theme)}
+${cartDrawer()}
+<section class="fb-section">
+  <div class="fb-inner" style="margin:0 auto;padding:0 1.5rem;max-width:720px">
+    <h1 style="font-size:2rem;font-weight:700;margin-bottom:2rem">Your cart</h1>
+    <div id="fb-cart-page"></div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function(){
+        const c = window.fbCart.read();
+        const root = document.getElementById('fb-cart-page');
+        if (!c || c.length === 0) {
+          root.innerHTML = '<p style="opacity:0.6;text-align:center;padding:3rem">Your cart is empty. <a href="/">Continue shopping →</a></p>';
+          return;
+        }
+        root.innerHTML = c.map(function(i){
+          return '<div style="display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid #eee"><img src="'+i.image+'" style="width:100px;height:100px;object-fit:cover;border-radius:var(--fb-radius)"><div style="flex:1"><div style="font-weight:600">'+i.name+'</div><div style="opacity:0.6;font-size:0.85rem">'+i.sku+'</div><div style="margin-top:0.5rem">'+i.qty+' × $'+i.price+'</div></div><div style="font-weight:700">$'+(i.qty*i.price).toFixed(2)+'</div></div>';
+        }).join('');
+        const total = c.reduce(function(s,i){return s+(i.price*i.qty);},0);
+        root.innerHTML += '<div style="display:flex;justify-content:space-between;padding:1.5rem 0;font-size:1.25rem;font-weight:700"><span>Total</span><span>$'+total.toFixed(2)+'</span></div><button onclick="window.fbCart.checkout()" style="width:100%;padding:1rem;background:var(--fb-accent);color:var(--fb-on-accent);border:none;border-radius:var(--fb-radius);font-weight:700;font-size:1rem;cursor:pointer">Checkout</button>';
+      });
+    <\/script>
+  </div>
+</section>
+</body>
+</html>`;
+}
+
+function renderSitemap(
+  project: Project,
+  products: Awaited<ReturnType<typeof listProducts>>,
+  collections: Awaited<ReturnType<typeof listCollections>>,
+): string {
+  const urls: string[] = [];
+  for (const p of project.pages) {
+    const slug = p.slug === '/' ? '/' : `/${p.slug.replace(/^\/+/, '').replace(/\/+$/, '')}/`;
+    urls.push(slug);
+  }
+  for (const p of products) urls.push(`/products/${p.slug}/`);
+  for (const c of collections) urls.push(`/collections/${c.handle}/`);
+  const now = new Date().toISOString();
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((u) => `  <url><loc>${u}</loc><lastmod>${now}</lastmod></url>`).join('\n')}
+</urlset>`;
+}
+
 export function renderSite(
   project: Project,
   sectionsMap: Map<string, Section>,
 ): RenderedSite {
   const files: RenderedSite['files'] = [];
-  const theme = project.theme;
+  const theme = normalizeTheme(project.theme);
   const products = getCatalogProducts();
+  const fullProducts = getFullProducts();
+  const collections = getCollections();
+  const fontsHref = googleFontsHref([theme.fontFamily, theme.headingFontFamily ?? '']);
 
-  // CSS
-  files.push({ path: 'assets/site.css', content: baseCss() });
+  // CSS (base + theme variables)
+  files.push({ path: 'assets/site.css', content: baseCss() + '\n' + themeCss(theme) });
+  // Cart + client runtime
+  files.push({ path: 'assets/cart.js', content: cartJs() });
 
   // Per-page HTML
   for (let i = 0; i < project.pages.length; i++) {
@@ -330,11 +716,13 @@ export function renderSite(
 <meta name="description" content="${escape(project.description ?? '')}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=${escape(theme.fontFamily).replace(/ /g, '+')}:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+${fontsHref ? `<link href="${fontsHref}" rel="stylesheet">` : ''}
 <link rel="stylesheet" href="/assets/site.css">
-<style>body{font-family:'${escape(theme.fontFamily)}',system-ui,sans-serif;background:${escape(theme.accentColor)};color:${escape(theme.secondaryColor)}}</style>
+<script defer src="/assets/cart.js"><\/script>
 </head>
 <body>
+${commonHeader(project, theme)}
+${cartDrawer()}
 ${body}
 <!-- Built with Forge Builder — ${new Date().toISOString()} -->
 </body>
@@ -344,10 +732,44 @@ ${body}
     files.push({ path: filePath, content: html });
   }
 
-  // Manifest + robots
+  // =======================================================
+  // Dynamic: product detail pages — /products/{slug}/index.html
+  // =======================================================
+  for (const p of fullProducts) {
+    files.push({
+      path: `products/${p.slug}/index.html`,
+      content: renderProductPage(project, theme, p, fontsHref),
+    });
+  }
+
+  // =======================================================
+  // Dynamic: collection pages — /collections/{handle}/index.html
+  // =======================================================
+  for (const c of collections) {
+    let items: typeof fullProducts = [];
+    try {
+      items = productsInCollection(c.id) as typeof fullProducts;
+    } catch {}
+    files.push({
+      path: `collections/${c.handle}/index.html`,
+      content: renderCollectionPage(project, theme, c, items, fontsHref),
+    });
+  }
+
+  // /cart/ page (client-side cart)
+  files.push({
+    path: 'cart/index.html',
+    content: renderCartPage(project, theme, fontsHref),
+  });
+
+  // Manifest + robots + sitemap
   files.push({
     path: 'robots.txt',
-    content: 'User-agent: *\nAllow: /\n',
+    content: `User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n`,
+  });
+  files.push({
+    path: 'sitemap.xml',
+    content: renderSitemap(project, fullProducts, collections),
   });
   files.push({
     path: 'forge-builder.json',
@@ -356,6 +778,8 @@ ${body}
         project: { id: project.id, name: project.name, status: 'published' },
         generatedAt: new Date().toISOString(),
         pages: project.pages.map((p) => ({ id: p.id, name: p.name, slug: p.slug, sections: p.sections.length })),
+        products: fullProducts.length,
+        collections: collections.length,
       },
       null,
       2,

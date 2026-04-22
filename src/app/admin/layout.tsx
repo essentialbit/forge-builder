@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Package, Layers, ImageIcon, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Package, Layers, ImageIcon, ArrowLeft, Mail } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,6 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <NavItem href="/admin/products" icon={<Package className="w-4 h-4" />} label="Products" />
           <NavItem href="/admin/collections" icon={<Layers className="w-4 h-4" />} label="Collections" />
           <NavItem href="/admin/media" icon={<ImageIcon className="w-4 h-4" />} label="Media" />
+          <NavItem href="/admin/submissions" icon={<Mail className="w-4 h-4" />} label="Submissions" />
         </nav>
         <div className="p-3 border-t border-slate-800">
           <Link
