@@ -3,7 +3,7 @@
   "name": "Forge Jewellery",
   "description": "Australian luxury jewellery store - premium iced out jewelry for those who stand out",
   "created": "2026-03-23T00:00:00.000Z",
-  "updated": "2026-04-22T10:03:56.344Z",
+  "updated": "2026-04-22T10:42:07.831Z",
   "status": "published",
   "theme": {
     "primaryColor": "#D4AF37",
@@ -45,74 +45,64 @@
     }
   ],
   "deployConfig": {
-    "githubRepo": "essentialbit/Forge-Jewellery",
-    "githubBranch": "forge-builder/preview",
+    "githubRepo": "essentialbit/forge-builder-demo",
+    "githubBranch": "main",
     "netlifySiteId": "bd37d9de-6c54-490d-84f3-bd03e0dcbe7a"
   },
   "lastPublish": {
-    "at": "2026-04-22T10:03:56.344Z",
-    "durationMs": 13973,
+    "at": "2026-04-22T10:42:07.831Z",
+    "durationMs": 13159,
     "github": {
       "pushed": true,
-      "sha": "ee48c6d561eb71f65b722c1138dee119dce36782",
-      "repo": "essentialbit/Forge-Jewellery",
-      "branch": "forge-builder/preview",
+      "sha": "5dcba1d6dc4333b5a53989b4c6e745674b17ee7f",
+      "repo": "essentialbit/forge-builder-demo",
+      "branch": "main",
       "logs": [
         {
-          "t": 1776852222627,
+          "t": 1776854514939,
           "level": "info",
-          "msg": "Cloning essentialbit/Forge-Jewellery into /Volumes/Iron 1TBSSD/OpenClaw-Workspace/forge-builder/projects/forge-jewellery/.forge-publish/essentialbit__Forge-Jewellery…"
+          "msg": "Cloning essentialbit/forge-builder-demo into /Volumes/Iron 1TBSSD/OpenClaw-Workspace/forge-builder/projects/forge-jewellery/.forge-publish/essentialbit__forge-builder-demo…"
         },
         {
-          "t": 1776852225075,
-          "level": "warn",
-          "msg": "git clone failed (code 128): Cloning into '/Volumes/Iron 1TBSSD/OpenClaw-Workspace/forge-builder/projects/forge-jewellery/.forge-publish/essentialbit__Forge-Jewellery'...\nfatal: Remote branch forge-builder/preview not found in upstream origin\n"
-        },
-        {
-          "t": 1776852225075,
-          "level": "info",
-          "msg": "Attempting fresh init + push to new branch…"
-        },
-        {
-          "t": 1776852226272,
+          "t": 1776854518015,
           "level": "info",
           "msg": "Wrote 6 files to worktree."
         },
         {
-          "t": 1776852227780,
+          "t": 1776854519403,
           "level": "info",
-          "msg": "Committed: [forge-builder/preview (root-commit) ee48c6d] forge-builder: publish Forge Jewellery — 2026-04-22T10:03:42.626Z\n 6 files changed, 321 insertions(+)\n create mode 100644 about/index.html\n create mode 100644 assets/site.css\n create mode 100644 forge-builder.json\n create mode 100644 index.html\n create mode 100644 robots.txt\n create mode 100644 shop/index.html\n"
+          "msg": "Committed: [main 5dcba1d] forge-builder: publish Forge Jewellery — 2026-04-22T10:41:54.938Z\n 7 files changed, 321 insertions(+), 1 deletion(-)\n delete mode 100644 README.md\n create mode 100644 about/index.html\n create mode 100644 assets/site.css\n create mode 100644 forge-builder.json\n create mode 100644 index.html\n create mode 100644 robots.txt\n create mode 100644 shop/index.html\n"
         },
         {
-          "t": 1776852229778,
+          "t": 1776854521115,
           "level": "info",
-          "msg": "Pushed to essentialbit/Forge-Jewellery@forge-builder/preview"
+          "msg": "Pushed to essentialbit/forge-builder-demo@main"
         }
       ]
     },
     "netlify": {
       "deployed": true,
-      "deployId": "69e89d06b7dde438e90e9d22",
+      "deployId": "69e8a5fae724d87b1a79e209",
       "url": "https://forge-builder-demo.netlify.app",
       "state": "ready",
       "logs": [
         {
-          "t": 1776852229807,
+          "t": 1776854521147,
           "level": "info",
           "msg": "Prepared 6 files for Netlify deploy."
         },
         {
-          "t": 1776852231272,
+          "t": 1776854522754,
           "level": "info",
-          "msg": "Netlify deploy created: 69e89d06b7dde438e90e9d22. Need to upload 4 files."
+          "msg": "Netlify deploy created: 69e8a5fae724d87b1a79e209. Need to upload 4 files."
         },
         {
-          "t": 1776852233203,
+          "t": 1776854524691,
           "level": "info",
           "msg": "Uploaded 4 files."
         },
         {
-          "t": 1776852236344,
+          "t": 1776854527831,
           "level": "info",
           "msg": "Netlify deploy ready at https://forge-builder-demo.netlify.app"
         }

@@ -146,7 +146,7 @@ export function PublishDialog({ open, onOpenChange }: PublishDialogProps) {
                   placeholder="5181df3b-47b2-4e5d-87a4-833e124e518e"
                   value={deployConfig.netlifySiteId ?? ""}
                   onChange={(v) => setDeployConfig({ netlifySiteId: v || undefined })}
-                  hint="From Netlify \u2192 Site settings \u2192 General \u2192 Site information \u2192 Site ID"
+                  hint="From Netlify → Site settings → General → Site information → Site ID"
                 />
               </div>
             )}
@@ -159,7 +159,7 @@ export function PublishDialog({ open, onOpenChange }: PublishDialogProps) {
               <div className="flex-1">
                 <h3 className="text-sm font-semibold text-white mb-1">Preview build</h3>
                 <p className="text-xs text-slate-400 mb-3">
-                  See exactly what will be deployed \u2014 the live preview shows the in-editor state, this shows the
+                  See exactly what will be deployed — the live preview shows the in-editor state, this shows the
                   compiled static site.
                 </p>
                 <div className="flex items-center gap-2">

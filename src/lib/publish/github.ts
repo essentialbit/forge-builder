@@ -1,5 +1,5 @@
 /**
- * GitHub sync \u2014 pushes the rendered static site to a repo.
+ * GitHub sync — pushes the rendered static site to a repo.
  *
  * Uses shell git via execa-style spawn since we expect git + the PAT on
  * the dev machine. Repo is cloned/pulled into `.forge-publish/<repo>/`
@@ -57,9 +57,14 @@ export async function syncToGithub(params: GithubSyncParams): Promise<GithubSync
 
   try {
     if (!token) throw new Error('Missing GITHUB_TOKEN');
-    if (!repo || !repo.includes('/')) throw new Error(`Invalid repo "${repo}" \u2014 expected "owner/repo"`);
+    if (!repo || !repo.includes('/')) throw new Error(`Invalid repo "${repo}" — expected "owner/repo"`);
 
-    const remoteUrl = `https://${user || 'x-access-token'}:${token}@github.com/${repo}.git`;
+    // Classic PATs (ghp_*) can auth as just `<token>@github.com`.
+    // Fine-grained PATs need a username (any non-empty one works) first.
+    const isClassic = /^ghp_/.test(token);
+    const remoteUrl = isClassic
+      ? `https://${token}@github.com/${repo}.git`
+      : `https://${user || 'x-access-token'}:${token}@github.com/${repo}.git`;
     const cloneDir = path.join(workDir, repo.replace('/', '__'));
 
     // Ensure clone exists and is on the right branch
@@ -103,7 +108,7 @@ export async function syncToGithub(params: GithubSyncParams): Promise<GithubSync
     }
     log('info', `Wrote ${files.length} files to worktree.`);
 
-    // Configure identity (first run) \u2014 use a bot persona
+    // Configure identity (first run) — use a bot persona
     await run('git', ['config', 'user.email', 'jamesbro@openclaw.ai'], { cwd: cloneDir });
     await run('git', ['config', 'user.name', 'Forge Builder'], { cwd: cloneDir });
 
@@ -113,7 +118,7 @@ export async function syncToGithub(params: GithubSyncParams): Promise<GithubSync
 
     const status = await run('git', ['status', '--porcelain'], { cwd: cloneDir });
     if (!status.stdout.trim()) {
-      log('info', 'No changes to commit \u2014 skipping push.');
+      log('info', 'No changes to commit — skipping push.');
       const head = await run('git', ['rev-parse', 'HEAD'], { cwd: cloneDir });
       return {
         pushed: true,

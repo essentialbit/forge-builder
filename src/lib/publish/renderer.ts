@@ -2,7 +2,7 @@
  * Static HTML renderer for published projects.
  * Converts Project + sections into standalone HTML/CSS files.
  *
- * Intentionally minimal: no React runtime, no JS frameworks \u2014
+ * Intentionally minimal: no React runtime, no JS frameworks —
  * the published site is plain, fast HTML. Sections render server-side
  * using the same layout conventions as the preview.
  */
@@ -161,7 +161,7 @@ function renderSection(section: Section, theme: Theme): string {
     case 'trust-badges': {
       const badges = Array.isArray(s.badges) ? (s.badges as Array<{ label?: string; link?: string }>) : [];
       const items = badges
-        .map((b) => `<a href="${escape(b.link ?? '#')}"><span class="fb-badge-icon">\u2713</span>${escape(b.label ?? '')}</a>`)
+        .map((b) => `<a href="${escape(b.link ?? '#')}"><span class="fb-badge-icon">✓</span>${escape(b.label ?? '')}</a>`)
         .join('');
       return `<section class="fb-trust" style="background:${escape(theme.accentColor)};color:${escape(theme.secondaryColor)}"><div class="fb-inner">${items}</div></section>`;
     }
@@ -175,7 +175,7 @@ function renderSection(section: Section, theme: Theme): string {
   <div class="fb-inner fb-newsletter-inner">
     <h2 style="font-family:${escape(theme.fontFamily)}">${heading}</h2>
     ${description ? `<p>${description}</p>` : ''}
-    <form class="fb-newsletter-form" onsubmit="event.preventDefault();alert('Thanks \u2014 this is a preview-only form.');">
+    <form class="fb-newsletter-form" onsubmit="event.preventDefault();alert('Thanks — this is a preview-only form.');">
       <input type="email" name="email" required placeholder="your@email.com">
       <button type="submit" style="background:${escape(theme.secondaryColor)};color:${escape(theme.primaryColor)}">${buttonText}</button>
     </form>
@@ -198,7 +198,7 @@ function renderSection(section: Section, theme: Theme): string {
         .join('');
       const socials = social
         .map((l) => `<a href="${escape(l.url ?? '#')}">${escape(l.label ?? '')}</a>`)
-        .join(' \u00b7 ');
+        .join(' · ');
       return `
 <footer class="fb-footer" style="background:${escape(theme.secondaryColor)};color:${escape(theme.accentColor)}">
   <div class="fb-inner">
@@ -300,7 +300,7 @@ export function renderSite(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escape(page.name)} \u2014 ${escape(project.name)}</title>
+<title>${escape(page.name)} — ${escape(project.name)}</title>
 <meta name="description" content="${escape(project.description ?? '')}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -310,7 +310,7 @@ export function renderSite(
 </head>
 <body>
 ${body}
-<!-- Built with Forge Builder \u2014 ${new Date().toISOString()} -->
+<!-- Built with Forge Builder — ${new Date().toISOString()} -->
 </body>
 </html>`;
 
