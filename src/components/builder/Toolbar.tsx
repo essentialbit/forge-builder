@@ -12,6 +12,8 @@ import {
   Cloud,
   CloudOff,
   Package,
+  Undo,
+  Redo,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -21,7 +23,7 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ onBrandKitClick, onPublishClick }: ToolbarProps) {
-  const { project, hasUnsavedChanges, isSaving, saveProject } = useBuilderStore();
+  const { project, hasUnsavedChanges, isSaving, saveProject, undo, redo, canUndo, canRedo, lastSavedAt } = useBuilderStore();
 
   return (
     <header className="h-16 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between">
@@ -36,17 +38,40 @@ export function Toolbar({ onBrandKitClick, onPublishClick }: ToolbarProps) {
 
         <h1 className="text-white font-semibold">{project?.name || "Untitled"}</h1>
 
-        {hasUnsavedChanges ? (
+        {hasUnsavedChanges || isSaving ? (
           <span className="flex items-center gap-1.5 text-amber-400 text-sm">
             <CloudOff className="w-4 h-4" />
-            Unsaved
+            {isSaving ? "Saving…" : "Unsaved"}
           </span>
         ) : (
           <span className="flex items-center gap-1.5 text-green-400 text-sm">
             <Cloud className="w-4 h-4" />
-            Saved
+            {lastSavedAt ? `Saved ${relativeTime(lastSavedAt)}` : "Saved"}
           </span>
         )}
+
+        <div className="flex items-center gap-1 ml-3 border-l border-slate-700 pl-3">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 text-slate-400 hover:text-white disabled:opacity-30"
+            onClick={undo}
+            disabled={!canUndo()}
+            title="Undo (⌘Z)"
+          >
+            <Undo className="w-4 h-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 text-slate-400 hover:text-white disabled:opacity-30"
+            onClick={redo}
+            disabled={!canRedo()}
+            title="Redo (⌘⇧Z)"
+          >
+            <Redo className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Center - Device Preview */}
@@ -100,6 +125,14 @@ export function Toolbar({ onBrandKitClick, onPublishClick }: ToolbarProps) {
       </div>
     </header>
   );
+}
+
+function relativeTime(ts: number): string {
+  const diff = Math.round((Date.now() - ts) / 1000);
+  if (diff < 5) return "just now";
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
+  return `${Math.round(diff / 3600)}h ago`;
 }
 
 function DeviceSwitcher() {

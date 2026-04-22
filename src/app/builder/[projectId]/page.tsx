@@ -10,6 +10,7 @@ import { Inspector } from "@/components/builder/Inspector";
 import { BrandKit } from "@/components/builder/BrandKit";
 import { DnDProvider } from "@/components/builder/DnDContext";
 import { PublishDialog } from "@/components/builder/PublishDialog";
+import { KeyboardShortcuts } from "@/components/builder/KeyboardShortcuts";
 import { useState } from "react";
 
 export default function BuilderPage() {
@@ -53,6 +54,7 @@ export default function BuilderPage() {
 
   return (
     <DnDProvider>
+      <KeyboardShortcuts />
       <div className="h-screen flex flex-col bg-slate-950 overflow-hidden">
         {/* Top Toolbar */}
         <Toolbar

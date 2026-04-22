@@ -7,14 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
-import { Trash2, Settings } from "lucide-react";
+import { Trash2, Settings, Copy, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FieldType, Section } from "@/types/builder";
 import { ArrayField } from "@/components/builder/ArrayField";
 import { ProductPicker } from "@/components/builder/ProductPicker";
+import { FontPicker } from "@/components/builder/FontPicker";
+import { ColorSchemePicker } from "@/components/builder/ColorSchemePicker";
 
 export function Inspector() {
-  const { project, selectedSectionId, updateSection, removeSection, selectSection } = useBuilderStore();
+  const { project, selectedSectionId, updateSection, removeSection, selectSection, duplicateSection, moveSection } = useBuilderStore();
 
   if (!project || !selectedSectionId) return null;
 
@@ -64,7 +66,33 @@ export function Inspector() {
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-4 border-t border-slate-800 space-y-2">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1 border-slate-700"
+            onClick={() => selectedSectionId && moveSection(selectedSectionId, -1)}
+            title="Move up"
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 border-slate-700"
+            onClick={() => selectedSectionId && moveSection(selectedSectionId, 1)}
+            title="Move down"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 border-slate-700"
+            onClick={() => selectedSectionId && duplicateSection(selectedSectionId)}
+            title="Duplicate (⌘D)"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </Button>
+        </div>
         <Button
           variant="destructive"
           className="w-full"
@@ -212,6 +240,14 @@ function FieldRenderer({ fieldKey, field, value, onChange }: FieldRendererProps)
           />
           <span className="text-sm text-slate-400 w-12 text-right">{String(value ?? "")}</span>
         </div>
+      )}
+
+      {field.type === "color_scheme" && (
+        <ColorSchemePicker value={(value as string) || ""} onChange={(v) => onChange(v)} />
+      )}
+
+      {field.type === "font_picker" && (
+        <FontPicker value={(value as string) || ""} onChange={(v) => onChange(v)} />
       )}
 
       {field.type === "array" && fieldKey === "product_slugs" && (

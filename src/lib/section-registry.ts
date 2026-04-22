@@ -15,8 +15,9 @@ export const sectionRegistry: Record<string, SectionDefinition> = {
       background_image_url: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=1920&q=80',
       overlay_opacity: 50,
       text_alignment: 'center',
-      text_color: '#ffffff',
-      background_color: '#000000',
+      color_scheme: '',
+      height: 'large',
+      animation: 'fade-in',
     },
     schema: {
       headline: { type: 'text', label: 'Headline' },
@@ -34,8 +35,27 @@ export const sectionRegistry: Record<string, SectionDefinition> = {
           { label: 'Right', value: 'right' },
         ],
       },
-      text_color: { type: 'color', label: 'Text Color' },
-      background_color: { type: 'color', label: 'Background Color' },
+      height: {
+        type: 'select',
+        label: 'Height',
+        options: [
+          { label: 'Small (40vh)', value: 'small' },
+          { label: 'Medium (60vh)', value: 'medium' },
+          { label: 'Large (80vh)', value: 'large' },
+          { label: 'Full screen', value: 'full' },
+        ],
+      },
+      animation: {
+        type: 'select',
+        label: 'Animation',
+        options: [
+          { label: 'None', value: 'none' },
+          { label: 'Fade in', value: 'fade-in' },
+          { label: 'Fade up', value: 'fade-up' },
+          { label: 'Zoom in', value: 'zoom-in' },
+        ],
+      },
+      color_scheme: { type: 'color_scheme', label: 'Colour scheme' },
     },
   },
   announcement: {

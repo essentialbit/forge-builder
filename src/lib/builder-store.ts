@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { Project, Page, Section, DeviceType } from '@/types/builder';
 import { sectionRegistry } from '@/lib/section-registry';
+import { cloneProject } from '@/lib/history-middleware';
+import { normalizeTheme } from '@/lib/theme';
+
+const MAX_HISTORY = 50;
 
 export type PublishStage =
   | 'idle'
@@ -43,6 +47,12 @@ interface BuilderState {
   isSaving: boolean;
   publish: PublishState;
   deployConfig: DeployConfig;
+  // History
+  _past: Project[];
+  _future: Project[];
+  // Autosave
+  autosaveEnabled: boolean;
+  lastSavedAt: number | null;
 
   // Actions
   loadProject: (id: string) => Promise<void>;
@@ -66,6 +76,16 @@ interface BuilderState {
   pingPreview: (payload: Record<string, unknown>) => void;
   getSections: () => Section[];
   getPageSections: (pageId: string) => Section[];
+
+  // History
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+
+  // Extra mutations
+  duplicateSection: (sectionId: string) => void;
+  moveSection: (sectionId: string, delta: -1 | 1) => void;
 }
 
 function generateId(prefix: string): string {
@@ -79,6 +99,20 @@ const initialPublishState: PublishState = {
   logs: [],
 };
 
+// Helper: snapshot current project into _past before a mutating action
+function recordHistory(
+  get: () => BuilderState,
+  set: (partial: Partial<BuilderState>) => void,
+) {
+  const state = get();
+  if (!state.project) return;
+  const snap = cloneProject(state.project);
+  set({
+    _past: [...state._past.slice(-MAX_HISTORY + 1), snap],
+    _future: [],
+  });
+}
+
 export const useBuilderStore = create<BuilderState>((set, get) => ({
   project: null,
   selectedSectionId: null,
@@ -88,6 +122,10 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   previewScale: 100,
   hasUnsavedChanges: false,
   isLoading: false,
+  _past: [],
+  _future: [],
+  autosaveEnabled: true,
+  lastSavedAt: null,
   isSaving: false,
   publish: initialPublishState,
   deployConfig: {},
@@ -98,6 +136,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       const response = await fetch(`/api/projects/${id}`);
       if (!response.ok) throw new Error('Failed to load project');
       const project = await response.json();
+      project.theme = normalizeTheme(project.theme);
       set({
         project,
         selectedPageId: project.pages[0]?.id || null,
@@ -105,6 +144,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         hasUnsavedChanges: false,
         publish: initialPublishState,
         deployConfig: project.deployConfig ?? {},
+        _past: [],
+        _future: [],
       });
     } catch (error) {
       console.error('Failed to load project:', error);
@@ -129,6 +170,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     const definition = sectionRegistry[type];
     if (!definition) return;
+    recordHistory(get, set);
 
     const newSection: Section = {
       id: generateId(type),
@@ -170,6 +212,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     const existing = project.sections?.[sectionId];
     if (!existing) return;
+    recordHistory(get, set);
 
     const merged: Section = {
       ...existing,
@@ -208,6 +251,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   removeSection: (sectionId) => {
     const { project, selectedSectionId } = get();
     if (!project) return;
+    recordHistory(get, set);
 
     const updatedPages = project.pages.map((page) => ({
       ...page,
@@ -234,6 +278,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   reorderSections: (pageId, fromIndex, toIndex) => {
     const { project } = get();
     if (!project) return;
+    recordHistory(get, set);
 
     const updatedPages = project.pages.map((page) => {
       if (page.id === pageId) {
@@ -266,6 +311,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   updateBrandKit: (updates) => {
     const { project, pingPreview } = get();
     if (!project) return;
+    recordHistory(get, set);
 
     const newTheme = { ...project.theme, ...updates };
     set({
@@ -282,6 +328,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   addPage: (name) => {
     const { project } = get();
     if (!project) return;
+    recordHistory(get, set);
 
     const newPage: Page = {
       id: generateId('page'),
@@ -304,6 +351,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   removePage: (pageId) => {
     const { project, selectedPageId } = get();
     if (!project || project.pages.length <= 1) return;
+    recordHistory(get, set);
 
     const updatedPages = project.pages.filter((p) => p.id !== pageId);
 
@@ -321,6 +369,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   renamePage: (pageId, name) => {
     const { project } = get();
     if (!project) return;
+    recordHistory(get, set);
 
     const updatedPages = project.pages.map((page) =>
       page.id === pageId ? { ...page, name } : page
@@ -351,7 +400,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         const body = await response.text();
         throw new Error(`Save failed (${response.status}): ${body.slice(0, 200)}`);
       }
-      set({ hasUnsavedChanges: false });
+      set({ hasUnsavedChanges: false, lastSavedAt: Date.now() });
       return true;
     } catch (error) {
       console.error('Failed to save project:', error);
@@ -491,5 +540,112 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     return page.sections
       .map((id) => dict[id])
       .filter((s): s is Section => Boolean(s));
+  },
+
+  // --- History ---
+  undo: () => {
+    const state = get();
+    const past = state._past;
+    if (past.length === 0 || !state.project) return;
+    const prev = past[past.length - 1];
+    const current = cloneProject(state.project);
+    set({
+      project: prev,
+      _past: past.slice(0, -1),
+      _future: [current, ...state._future].slice(0, MAX_HISTORY),
+      hasUnsavedChanges: true,
+    });
+    get().pingPreview({ type: 'RELOAD' });
+  },
+  redo: () => {
+    const state = get();
+    const future = state._future;
+    if (future.length === 0 || !state.project) return;
+    const next = future[0];
+    const current = cloneProject(state.project);
+    set({
+      project: next,
+      _future: future.slice(1),
+      _past: [...state._past, current].slice(-MAX_HISTORY),
+      hasUnsavedChanges: true,
+    });
+    get().pingPreview({ type: 'RELOAD' });
+  },
+  canUndo: () => get()._past.length > 0,
+  canRedo: () => get()._future.length > 0,
+
+  // --- Extra mutations ---
+  duplicateSection: (sectionId) => {
+    const { project } = get();
+    if (!project) return;
+    const section = project.sections?.[sectionId];
+    if (!section) return;
+    recordHistory(get, set);
+
+    // Find the page containing this section
+    let foundPageId: string | null = null;
+    let insertIdx = -1;
+    for (const page of project.pages) {
+      const i = page.sections.indexOf(sectionId);
+      if (i >= 0) {
+        foundPageId = page.id;
+        insertIdx = i;
+        break;
+      }
+    }
+    if (!foundPageId) return;
+
+    const newId = generateId(section.type);
+    const copy: Section = {
+      ...cloneProject({ ...section } as unknown as Project) as unknown as Section,
+      id: newId,
+      name: `${section.name} (copy)`,
+    };
+
+    const updatedPages = project.pages.map((page) =>
+      page.id === foundPageId
+        ? {
+            ...page,
+            sections: [
+              ...page.sections.slice(0, insertIdx + 1),
+              newId,
+              ...page.sections.slice(insertIdx + 1),
+            ],
+          }
+        : page,
+    );
+
+    set({
+      project: {
+        ...project,
+        pages: updatedPages,
+        sections: { ...(project.sections ?? {}), [newId]: copy },
+        updated: new Date().toISOString(),
+      },
+      selectedSectionId: newId,
+      hasUnsavedChanges: true,
+    });
+
+    fetch(`/api/sections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: project.id, section: copy }),
+    }).catch(() => {});
+
+    get().pingPreview({ type: 'RELOAD' });
+  },
+
+  moveSection: (sectionId, delta) => {
+    const { project } = get();
+    if (!project) return;
+    for (const page of project.pages) {
+      const i = page.sections.indexOf(sectionId);
+      if (i >= 0) {
+        const target = i + delta;
+        if (target < 0 || target >= page.sections.length) return;
+        get().reorderSections(page.id, i, target);
+        return;
+      }
+    }
   },
 }));

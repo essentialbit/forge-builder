@@ -31,12 +31,42 @@ export interface Project {
   sections?: Record<string, Section>;
 }
 
+export interface ColorScheme {
+  id: string;
+  name: string;
+  /** Background for page sections using this scheme */
+  background: string;
+  /** Primary text color on the background */
+  text: string;
+  /** Accent / brand CTA color */
+  accent: string;
+  /** Text color on accent (buttons etc.) */
+  onAccent: string;
+  /** Muted/subtle text */
+  muted: string;
+  /** Border color */
+  border: string;
+}
+
 export interface ThemeConfig {
+  // Legacy flat colours (kept for backwards-compatibility with existing sections)
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
   fontFamily: string;
+  /** Optional heading font (falls back to fontFamily) */
+  headingFontFamily?: string;
   logo: string;
+
+  // New: named color schemes
+  colorSchemes?: ColorScheme[];
+  /** Default scheme id for sections that don't pick one */
+  defaultColorSchemeId?: string;
+
+  // Design tokens
+  radiusScale?: 'none' | 'sm' | 'md' | 'lg' | 'full';
+  spacingScale?: 'tight' | 'normal' | 'relaxed';
+  maxContentWidth?: number; // px
 }
 
 export interface Page {
@@ -100,8 +130,11 @@ export type FieldType =
   | 'textarea'
   | 'image'
   | 'color'
+  | 'color_scheme'
   | 'toggle'
   | 'select'
   | 'number'
   | 'array'
-  | 'html';
+  | 'html'
+  | 'font_picker'
+  | 'product';
