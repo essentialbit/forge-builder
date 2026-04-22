@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Search, Package, Loader2, Eye, EyeOff, Archive } from "lucide-react";
+import { Plus, Search, Package, Loader2, Eye, EyeOff, Archive, Upload, Download } from "lucide-react";
+import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ProductDrawer } from "./ProductDrawer";
@@ -32,6 +33,20 @@ export default function ProductsPage() {
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const limit = 50;
+
+  const importRef = useRef<HTMLInputElement | null>(null);
+  async function handleImport(file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/catalog/products/import", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(`Import failed: ${data.error || res.status}`);
+      return;
+    }
+    alert(`Imported — created: ${data.created}, updated: ${data.updated}, skipped: ${data.skipped}, errors: ${data.errors?.length ?? 0}`);
+    load();
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,9 +86,22 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold text-white">Products</h1>
           <p className="text-sm text-slate-400">{total} total · showing {items.length}</p>
         </div>
-        <Button onClick={() => setEditing("new")} className="bg-amber-500 hover:bg-amber-600 text-black">
-          <Plus className="w-4 h-4 mr-1.5" /> New product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => window.open("/api/catalog/products/export", "_blank")} className="border-slate-700 text-slate-300">
+            <Download className="w-4 h-4 mr-1.5" /> Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => importRef.current?.click()} className="border-slate-700 text-slate-300">
+            <Upload className="w-4 h-4 mr-1.5" /> Import CSV
+          </Button>
+          <input ref={importRef} type="file" accept=".csv" className="hidden" onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleImport(f);
+            e.target.value = "";
+          }} />
+          <Button onClick={() => setEditing("new")} className="bg-amber-500 hover:bg-amber-600 text-black">
+            <Plus className="w-4 h-4 mr-1.5" /> New product
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 mb-4">
