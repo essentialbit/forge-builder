@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { Project, Page, Section, DeviceType } from '@/types/builder';
+import { Project, Page, Section, DeviceType, Block, BlockType } from '@/types/builder';
 import { sectionRegistry } from '@/lib/section-registry';
+import { blockRegistry } from '@/lib/block-registry';
 import { cloneProject } from '@/lib/history-middleware';
 import { normalizeTheme } from '@/lib/theme';
 
@@ -83,9 +84,18 @@ interface BuilderState {
   canUndo: () => boolean;
   canRedo: () => boolean;
 
+  updatePageSeo: (pageId: string, seo: { title?: string; description?: string; ogImage?: string }) => void;
+
   // Extra mutations
   duplicateSection: (sectionId: string) => void;
-  moveSection: (sectionId: string, delta: -1 | 1) => void;
+  moveSection: (sectionId: string, delta: number) => void;
+
+  // Block-level mutations (all record history)
+  addBlock: (sectionId: string, blockType: string) => void;
+  updateBlock: (sectionId: string, blockId: string, updates: Partial<Block>) => void;
+  removeBlock: (sectionId: string, blockId: string) => void;
+  reorderBlocks: (sectionId: string, fromIndex: number, toIndex: number) => void;
+  duplicateBlock: (sectionId: string, blockId: string) => void;
 }
 
 function generateId(prefix: string): string {
@@ -633,6 +643,90 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     }).catch(() => {});
 
     get().pingPreview({ type: 'RELOAD' });
+  },
+
+  // --- SEO ---
+  updatePageSeo: (pageId, seo) => {
+    const { project } = get();
+    if (!project) return;
+    const updatedPages = project.pages.map((page) =>
+      page.id === pageId ? { ...page, seo: { ...page.seo, ...seo } } : page
+    );
+    set({
+      project: { ...project, pages: updatedPages, updated: new Date().toISOString() },
+      hasUnsavedChanges: true,
+    });
+  },
+
+  // --- Block mutations ---
+  addBlock: (sectionId, blockType) => {
+    const { project } = get();
+    if (!project) return;
+    const section = project.sections?.[sectionId];
+    if (!section) return;
+    recordHistory(get, set);
+    const def = blockRegistry[blockType];
+    if (!def) return;
+    const newBlock: Block = {
+      id: generateId('blk'),
+      type: blockType as BlockType,
+      settings: { ...def.defaultSettings },
+    };
+    const blocks = [...(section.blocks ?? []), newBlock];
+    get().updateSection(sectionId, { blocks });
+  },
+
+  updateBlock: (sectionId, blockId, updates) => {
+    const { project } = get();
+    if (!project) return;
+    const section = project.sections?.[sectionId];
+    if (!section) return;
+    recordHistory(get, set);
+    const blocks = (section.blocks ?? []).map((b) =>
+      b.id === blockId ? { ...b, ...updates, settings: { ...b.settings, ...((updates as { settings?: Record<string, unknown> }).settings ?? {}) } } : b
+    );
+    get().updateSection(sectionId, { blocks });
+  },
+
+  removeBlock: (sectionId, blockId) => {
+    const { project } = get();
+    if (!project) return;
+    const section = project.sections?.[sectionId];
+    if (!section) return;
+    recordHistory(get, set);
+    const blocks = (section.blocks ?? []).filter((b) => b.id !== blockId);
+    get().updateSection(sectionId, { blocks });
+  },
+
+  reorderBlocks: (sectionId, fromIndex, toIndex) => {
+    const { project } = get();
+    if (!project) return;
+    const section = project.sections?.[sectionId];
+    if (!section) return;
+    recordHistory(get, set);
+    const blocks = [...(section.blocks ?? [])];
+    const [moved] = blocks.splice(fromIndex, 1);
+    blocks.splice(toIndex, 0, moved);
+    get().updateSection(sectionId, { blocks });
+  },
+
+  duplicateBlock: (sectionId, blockId) => {
+    const { project } = get();
+    if (!project) return;
+    const section = project.sections?.[sectionId];
+    if (!section) return;
+    const blocks = section.blocks ?? [];
+    const idx = blocks.findIndex((b) => b.id === blockId);
+    if (idx < 0) return;
+    recordHistory(get, set);
+    const src = blocks[idx];
+    const newBlock: Block = {
+      id: generateId('blk'),
+      type: src.type,
+      settings: { ...src.settings },
+    };
+    const newBlocks = [...blocks.slice(0, idx + 1), newBlock, ...blocks.slice(idx + 1)];
+    get().updateSection(sectionId, { blocks: newBlocks });
   },
 
   moveSection: (sectionId, delta) => {

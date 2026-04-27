@@ -1,40 +1,147 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { recordSubmission } from '@/lib/catalog/submissions';
+import Stripe from 'stripe';
+import { getSqlite } from '@/lib/catalog/db';
+import { newId } from '@/lib/catalog/db';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? 'sk_test_placeholder', {
+  apiVersion: '2026-03-25.dahlia',
+});
 
-export async function OPTIONS() {
-  return new NextResponse(null, { headers: CORS });
+/**
+ * POST /api/checkout
+ *
+ * Body: {
+ *   items: CartItem[],        // { sku, name, price, quantity, image }
+ *   customer: { name, email },
+ *   successUrl: string,
+ *   cancelUrl: string,
+ * }
+ *
+ * Creates a Stripe Checkout session and returns { url }.
+ * If STRIPE_SECRET_KEY is not set, returns { demo: true, checkoutUrl: '/cart' }
+ * so the cart works in demo mode without Stripe configured.
+ */
+export async function POST(req: NextRequest) {
+  // Demo mode: no Stripe key
+  if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_placeholder') {
+    return NextResponse.json({ demo: true, checkoutUrl: '/cart' });
+  }
+
+  try {
+    const { items, customer, successUrl, cancelUrl } = await req.json();
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
+    }
+
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item: {
+      sku?: string;
+      name: string;
+      price: number;
+      quantity: number;
+      image?: string;
+    }) => ({
+      price_data: {
+        currency: 'aud',
+        product_data: {
+          name: item.name,
+          ...(item.image ? { images: [item.image] } : {}),
+          ...(item.sku ? { metadata: { sku: item.sku } } : {}),
+        },
+        unit_amount: Math.round(item.price * 100),
+      },
+      quantity: Math.max(1, item.quantity ?? 1),
+    }));
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: lineItems,
+      mode: 'payment',
+      customer_email: customer?.email,
+      success_url: successUrl ?? `${req.nextUrl.origin}/cart?success=1`,
+      cancel_url: cancelUrl ?? `${req.nextUrl.origin}/cart?canceled=1`,
+      metadata: {
+        source: 'forge-builder',
+        customer_name: customer?.name ?? '',
+      },
+      shipping_address_collection: {
+        allowed_countries: ['AU', 'NZ', 'GB', 'US', 'CA'],
+      },
+      phone_number_collection: { enabled: true },
+    });
+
+    // Persist the order to our local DB
+    const sqlite = getSqlite();
+    const now = Date.now();
+    const subtotal = items.reduce((sum: number, item: { price: number; quantity: number }) => sum + item.price * (item.quantity ?? 1), 0);
+
+    try {
+      const insertOrder = sqlite.prepare(`
+        INSERT INTO orders (id, stripe_session_id, status, subtotal, total, customer_name, customer_email, items_json, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertOrder.run(
+        newId('order'),
+        session.id,
+        'pending',
+        subtotal,
+        subtotal,
+        customer?.name ?? '',
+        customer?.email ?? '',
+        JSON.stringify(items),
+        now,
+        now,
+      );
+    } catch {
+      // table might not exist yet — that's fine for demo mode
+    }
+
+    return NextResponse.json({ checkoutUrl: session.url, sessionId: session.id });
+  } catch (e) {
+    const errMsg = e instanceof Error ? e.message : String(e);
+    // Handle Stripe key misconfiguration gracefully
+    if (errMsg.includes('Invalid API Key') || errMsg.includes('No API key provided')) {
+      return NextResponse.json({ demo: true, checkoutUrl: '/cart', error: 'Stripe not configured' });
+    }
+    return NextResponse.json({ error: errMsg }, { status: 500 });
+  }
 }
 
 /**
- * Placeholder checkout: records the cart as a submission of type 'checkout'
- * and returns { ok: true } with a status url if/when Stripe is wired up.
+ * GET /api/checkout?session_id=cs_xxx
  *
- * Replace with Stripe Checkout or Shopify Buy SDK integration.
+ * Returns the status of a Stripe Checkout session.
+ * Used by the /cart?success=1 page to confirm the order.
  */
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
+  if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_placeholder') {
+    return NextResponse.json({ demo: true });
+  }
+
+  const sessionId = req.nextUrl.searchParams.get('session_id');
+  if (!sessionId) return NextResponse.json({ error: 'Missing session_id' }, { status: 400 });
+
   try {
-    const body = await req.json();
-    const id = recordSubmission('checkout', body, req.headers.get('x-forwarded-for') ?? undefined, req.headers.get('user-agent') ?? undefined);
-    // No Stripe yet — return ok so the client can show a "submitted" message.
-    return NextResponse.json(
-      {
-        ok: true,
-        id,
-        message: 'Order received. Stripe integration not yet configured.',
-        // url: '<stripe session url when configured>'
-      },
-      { headers: CORS },
-    );
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    // Update order status if we have the DB
+    const sqlite = getSqlite();
+    try {
+      const updateOrder = sqlite.prepare('UPDATE orders SET status = ?, updated_at = ? WHERE stripe_session_id = ?');
+      const newStatus = session.payment_status === 'paid' ? 'paid' : session.payment_status;
+      updateOrder.run(newStatus, Date.now(), sessionId);
+    } catch {
+      // table doesn't exist
+    }
+
+    return NextResponse.json({
+      id: session.id,
+      paymentStatus: session.payment_status,
+      customerEmail: session.customer_email,
+      amountTotal: session.amount_total,
+      currency: session.currency,
+    });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e) },
-      { status: 500, headers: CORS },
-    );
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }

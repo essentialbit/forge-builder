@@ -10,6 +10,7 @@
 import type { Project, Section } from '@/types/builder';
 import catalog from '@/data/catalog.json';
 import { listProducts, listCollections, productsInCollection } from '@/lib/catalog/queries';
+import { getSqlite } from '@/lib/catalog/db';
 import { normalizeTheme, getScheme, radiusValue, googleFontsHref } from '@/lib/theme';
 
 type Theme = Project['theme'];
@@ -74,6 +75,27 @@ function escape(s: unknown): string {
 
 function formatAUD(v: number): string {
   return '$' + v.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function filterByCollection(handle: string, products: CatalogProduct[]): CatalogProduct[] {
+  if (!handle) return products;
+  try {
+    const cols = getCollections();
+    const col = cols.find((c) => c.handle === handle || c.id === handle);
+    if (!col) return products.slice(0, 12);
+    const sqlite = getSqlite();
+    const rows = sqlite.prepare(`
+      SELECT p.sku FROM collection_products cp
+      JOIN products p ON p.id = cp.product_id
+      WHERE cp.collection_id = ? AND p.status = 'active'
+      ORDER BY cp.position
+      LIMIT 50
+    `).all(col.id) as Array<{ sku: string }>;
+    const skuSet = new Set(rows.map((r) => r.sku.toLowerCase()));
+    return products.filter((p) => skuSet.has(p.slug.toLowerCase()));
+  } catch {
+    return products.slice(0, 12);
+  }
 }
 
 function pickProducts(
@@ -167,7 +189,10 @@ function _renderSectionInner(
       const columns = Math.max(1, Math.min(5, Number(s.columns ?? 3)));
       const showPrices = s.show_prices !== false;
       const slugs = Array.isArray(s.product_slugs) ? (s.product_slugs as string[]) : [];
-      const picked = pickProducts(products, slugs, columns * 2);
+      const collectionHandle = String(s.collection_handle ?? '');
+      // If collection_handle is set, filter by that collection; otherwise use product_slugs
+      const pool = collectionHandle ? filterByCollection(collectionHandle, products) : products;
+      const picked = slugs.length > 0 ? pickProducts(pool, slugs, columns * 2) : pool.slice(0, columns * 2);
       const showCart = s.show_add_to_cart !== false;
       const items = picked
         .slice(0, columns * 2)
@@ -587,17 +612,29 @@ function cartJs(): string {
   async function checkout(){
     const c = read();
     if (c.length === 0) { alert('Your cart is empty.'); return; }
+    const origin = window.location.origin;
     try {
-      const res = await fetch('/api/checkout', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({items:c}) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) window.location.href = data.url;
-        else alert('Checkout ready. Demo site — no payment processor configured.');
-      } else {
-        alert('Checkout is not yet configured for this site.');
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: c,
+          successUrl: origin + '/cart?success=1',
+          cancelUrl: origin + '/cart?canceled=1',
+        }),
+      });
+      const data = await res.json();
+      if (data.demo) {
+        alert('Checkout in demo mode — no payment processor configured yet.\n\nIn production, this would redirect to Stripe.');
+        return;
       }
-    } catch {
-      alert('Checkout is not yet configured for this site.');
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        alert('Could not inititate checkout. Please try again.');
+      }
+    } catch(e) {
+      alert('Checkout error: ' + (e?.message || 'unknown'));
     }
   }
   window.fbCart = { add, remove, setQty, open, close, render, read, checkout };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getCurrentUserFromCookie } from "@/lib/auth";
 import { useBuilderStore } from "@/lib/builder-store";
@@ -14,12 +14,16 @@ import { PublishDialog } from "@/components/builder/PublishDialog";
 import { KeyboardShortcuts } from "@/components/builder/KeyboardShortcuts";
 import { CommandPalette } from "@/components/builder/CommandPalette";
 import { ErrorBoundary } from "@/components/builder/ErrorBoundary";
+import { ForgeAssistant } from "@/components/builder/ForgeAssistant";
+import { OnboardingChecklist } from "@/components/builder/OnboardingChecklist";
+import { SeoPanel } from "@/components/builder/SeoPanel";
 
 export default function BuilderPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.projectId as string;
-  const { loadProject, project, selectedSectionId, isLoading } = useBuilderStore();
+  const { loadProject, project, selectedSectionId, isLoading, hasUnsavedChanges, saveProject, autosaveEnabled } = useBuilderStore();
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [brandKitOpen, setBrandKitOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -55,6 +59,18 @@ export default function BuilderPage() {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [handleMessage]);
+
+  // Autosave: save 3 seconds after last change
+  useEffect(() => {
+    if (!hasUnsavedChanges || !autosaveEnabled) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      saveProject();
+    }, 3000);
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [hasUnsavedChanges, autosaveEnabled, saveProject]);
 
   // Auth loading state
   if (!authChecked) {
@@ -101,8 +117,8 @@ export default function BuilderPage() {
               <Canvas />
             </div>
 
-            {/* Right Panel - Inspector */}
-            {selectedSectionId && <Inspector />}
+            {/* Right Panel */}
+            {selectedSectionId ? <Inspector /> : <SeoPanel />}
           </div>
 
           {/* Brand Kit Modal */}
@@ -111,6 +127,10 @@ export default function BuilderPage() {
           {/* Publish Dialog */}
           <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} />
         </div>
+
+        {/* Floating overlays */}
+        <ForgeAssistant />
+        <OnboardingChecklist />
       </DnDProvider>
     </ErrorBoundary>
   );

@@ -17,6 +17,31 @@ export type SectionType =
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Block primitive — typed sub-content inside a section
+// A block is the smallest editable unit. Sections that declare `blocks: [blockDef]`
+// in their schema can contain zero or more blocks of allowed types.
+// ─────────────────────────────────────────────────────────────────────────────
+export type BlockType = 'testimonial_card' | 'faq_item' | 'trust_badge' | 'footer_link' | 'footer_column' | 'newsletter_social_link';
+
+export interface Block {
+  id: string;          // e.g. "blk_xxxx"
+  type: BlockType;
+  settings: Record<string, unknown>;
+}
+
+export interface BlockDefinition {
+  type: BlockType;
+  name: string;
+  icon: string;
+  schema: SectionSchema; // same field schema type as sections
+  /** Default settings for a new block of this type */
+  defaultSettings: Record<string, unknown>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section
+// ─────────────────────────────────────────────────────────────────────────────
 export interface Project {
   id: string;
   name: string;
@@ -26,51 +51,32 @@ export interface Project {
   status: 'draft' | 'published';
   theme: ThemeConfig;
   pages: Page[];
-  /**
-   * Client-hydrated: full section records keyed by id.
-   * Server persists sections as individual JSON files; the
-   * /api/projects/[id] endpoint returns an array which we
-   * normalize into this map on the client.
-   */
   sections?: Record<string, Section>;
 }
 
 export interface ColorScheme {
   id: string;
   name: string;
-  /** Background for page sections using this scheme */
   background: string;
-  /** Primary text color on the background */
   text: string;
-  /** Accent / brand CTA color */
   accent: string;
-  /** Text color on accent (buttons etc.) */
   onAccent: string;
-  /** Muted/subtle text */
   muted: string;
-  /** Border color */
   border: string;
 }
 
 export interface ThemeConfig {
-  // Legacy flat colours (kept for backwards-compatibility with existing sections)
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
   fontFamily: string;
-  /** Optional heading font (falls back to fontFamily) */
   headingFontFamily?: string;
   logo: string;
-
-  // New: named color schemes
   colorSchemes?: ColorScheme[];
-  /** Default scheme id for sections that don't pick one */
   defaultColorSchemeId?: string;
-
-  // Design tokens
   radiusScale?: 'none' | 'sm' | 'md' | 'lg' | 'full';
   spacingScale?: 'tight' | 'normal' | 'relaxed';
-  maxContentWidth?: number; // px
+  maxContentWidth?: number;
 }
 
 export interface Page {
@@ -78,6 +84,11 @@ export interface Page {
   name: string;
   slug: string;
   sections: string[]; // Section IDs
+  seo?: {
+    title?: string;
+    description?: string;
+    ogImage?: string;
+  };
 }
 
 export interface Section {
@@ -85,12 +96,15 @@ export interface Section {
   type: SectionType;
   name: string;
   settings: Record<string, unknown>;
-  /** Optional per-breakpoint overrides for select settings, plus visibility flags. */
+  /**
+   * Optional blocks nested inside this section.
+   * Only sections that declare `blocks: [...]` in their definition can hold blocks.
+   */
+  blocks?: Block[];
   responsive?: {
     hideMobile?: boolean;
     hideTablet?: boolean;
     hideDesktop?: boolean;
-    /** Sparse per-setting override: { mobile: { columns: 2 } } */
     mobile?: Record<string, unknown>;
     tablet?: Record<string, unknown>;
   };
@@ -110,8 +124,15 @@ export interface SectionDefinition {
   description: string;
   icon: string;
   category: SectionCategory;
-  defaultSettings: Record<string, unknown>;
+  /** Schema for the section's own settings */
   schema: SectionSchema;
+  defaultSettings: Record<string, unknown>;
+  /**
+   * Block types this section can contain.
+   * If defined, the Inspector shows a block editor panel.
+   * Example: testimonials section → accepts `testimonial_card` blocks.
+   */
+  blocks?: BlockDefinition[];
 }
 
 export type SectionCategory =
