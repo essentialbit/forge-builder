@@ -197,8 +197,36 @@ export const media = sqliteTable(
 );
 
 /* =============================================================
+ * Users (auth)
+ * ============================================================= */
+export const users = sqliteTable(
+  'users',
+  {
+    id: text('id').primaryKey(),
+    email: text('email').notNull().unique(),
+    name: text('name').notNull().default(''),
+    role: text('role', { enum: ['admin', 'editor'] }).notNull().default('editor'),
+    passwordHash: text('password_hash').notNull(),
+    resetToken: text('reset_token'),
+    resetTokenExpires: integer('reset_token_expires', { mode: 'timestamp_ms' }),
+    lastLogin: integer('last_login', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => ({
+    emailIdx: index('users_email_idx').on(t.email),
+  }),
+);
+
+/* =============================================================
  * Types
  * ============================================================= */
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type ProductVariant = typeof productVariants.$inferSelect;

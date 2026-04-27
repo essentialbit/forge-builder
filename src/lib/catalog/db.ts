@@ -143,6 +143,36 @@ function runMigrations(sqlite: Database.Database) {
       path TEXT NOT NULL,
       created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
     );
+
+    CREATE TABLE IF NOT EXISTS orders (
+      id TEXT PRIMARY KEY,
+      stripe_session_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      subtotal REAL NOT NULL DEFAULT 0,
+      total REAL NOT NULL DEFAULT 0,
+      customer_name TEXT DEFAULT '',
+      customer_email TEXT DEFAULT '',
+      shipping_address_json TEXT DEFAULT '{}',
+      items_json TEXT NOT NULL DEFAULT '[]',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS orders_stripe_session_idx ON orders(stripe_session_id);
+    CREATE INDEX IF NOT EXISTS orders_status_idx ON orders(status);
+
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL DEFAULT '',
+      role TEXT NOT NULL DEFAULT 'editor',
+      password_hash TEXT NOT NULL,
+      reset_token TEXT,
+      reset_token_expires INTEGER,
+      last_login INTEGER,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS users_email_idx ON users(email);
   `);
 }
 
