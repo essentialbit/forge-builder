@@ -20,13 +20,15 @@ export function OnboardingChecklist() {
   const [productCount, setProductCount] = useState<number | null>(null);
   const [celebrating, setCelebrating] = useState(false);
 
-  // Hydrate localStorage on mount
+  // ── ALL hooks must be declared before any early return ──────────────────────
+
+  // Hydrate dismissed state from localStorage on mount
   useEffect(() => {
     const wasDismissed = localStorage.getItem(DISMISSED_KEY) === "true";
     setDismissed(wasDismissed);
   }, []);
 
-  // Fetch product count
+  // Fetch product count whenever the checklist becomes visible
   useEffect(() => {
     if (dismissed) return;
     fetch("/api/catalog/products?limit=1")
@@ -45,40 +47,45 @@ export function OnboardingChecklist() {
       .catch(() => setProductCount(null));
   }, [dismissed]);
 
-  if (dismissed || !project) return null;
-
-  const brandKitOpened = typeof window !== "undefined" && localStorage.getItem(BRANDKIT_KEY) === "true";
-  const brandChanged = project.theme.primaryColor !== "#D4AF37";
-  const hasHero = project.pages.some((p) =>
+  // Derive checklist items (safe to do before early return — just depends on project)
+  const brandKitOpened =
+    typeof window !== "undefined" &&
+    localStorage.getItem(BRANDKIT_KEY) === "true";
+  const brandChanged = project?.theme.primaryColor !== "#D4AF37";
+  const hasHero = project?.pages.some((p) =>
     p.sections.some((id) => project.sections?.[id]?.type === "hero")
-  );
+  ) ?? false;
   const hasProducts = productCount !== null && productCount > 0;
-  const hasGithub = Boolean(deployConfig.githubRepo);
-  const isPublished = project.status === "published";
+  const hasGithub = Boolean(deployConfig?.githubRepo);
+  const isPublished = project?.status === "published";
 
-  const items: ChecklistItem[] = [
-    { id: "brand", label: "Set your brand colors", checked: brandChanged || brandKitOpened },
-    { id: "hero", label: "Add a hero section", checked: hasHero },
-    { id: "products", label: "Add your products", checked: hasProducts },
-    { id: "deploy", label: "Configure publishing", checked: hasGithub },
-    { id: "publish", label: "Publish your site", checked: isPublished },
-  ];
+  const items: ChecklistItem[] = project
+    ? [
+        { id: "brand",   label: "Set your brand colors",  checked: brandChanged || brandKitOpened },
+        { id: "hero",    label: "Add a hero section",      checked: hasHero },
+        { id: "products",label: "Add your products",       checked: hasProducts },
+        { id: "deploy",  label: "Configure publishing",    checked: hasGithub },
+        { id: "publish", label: "Publish your site",       checked: isPublished },
+      ]
+    : [];
 
   const completedCount = items.filter((i) => i.checked).length;
-  const allDone = completedCount === items.length;
-  const progress = Math.round((completedCount / items.length) * 100);
+  const allDone = items.length > 0 && completedCount === items.length;
+  const progress = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
 
-  // Celebrate when all complete
+  // Celebrate when all steps complete — guard inside effect, not around it
   useEffect(() => {
-    if (allDone && !celebrating) {
-      setCelebrating(true);
-      const timer = setTimeout(() => {
-        localStorage.setItem(DISMISSED_KEY, "true");
-        setDismissed(true);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [allDone, celebrating]);
+    if (dismissed || !project || !allDone || celebrating) return;
+    setCelebrating(true);
+    const timer = setTimeout(() => {
+      localStorage.setItem(DISMISSED_KEY, "true");
+      setDismissed(true);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [allDone, celebrating, dismissed, project]);
+
+  // ── Early return is now safe — all hooks have already been called ───────────
+  if (dismissed || !project) return null;
 
   function handleDismiss() {
     localStorage.setItem(DISMISSED_KEY, "true");
