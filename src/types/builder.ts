@@ -22,7 +22,7 @@ export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 // A block is the smallest editable unit. Sections that declare `blocks: [blockDef]`
 // in their schema can contain zero or more blocks of allowed types.
 // ─────────────────────────────────────────────────────────────────────────────
-export type BlockType = 'testimonial_card' | 'faq_item' | 'trust_badge' | 'footer_link' | 'footer_column' | 'newsletter_social_link';
+export type BlockType = 'testimonial_card' | 'faq_item' | 'trust_badge' | 'footer_link' | 'footer_column' | 'newsletter_social_link' | 'comparison_row';
 
 export interface Block {
   id: string;          // e.g. "blk_xxxx"

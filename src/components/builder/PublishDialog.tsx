@@ -22,6 +22,7 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronRight,
+  FileJson,
 } from "lucide-react";
 
 interface PublishDialogProps {
@@ -45,6 +46,8 @@ export function PublishDialog({ open, onOpenChange }: PublishDialogProps) {
   const [buildPreviewError, setBuildPreviewError] = useState<string | null>(null);
   const [configExpanded, setConfigExpanded] = useState(false);
   const [logsExpanded, setLogsExpanded] = useState(false);
+  const [cmsPushLoading, setCmsPushLoading] = useState(false);
+  const [cmsPushResult, setCmsPushResult] = useState<{ success?: boolean; url?: string; error?: string } | null>(null);
 
   // Reset state when dialog re-opens after a success/error
   useEffect(() => {
@@ -77,6 +80,26 @@ export function PublishDialog({ open, onOpenChange }: PublishDialogProps) {
 
   async function handlePublish() {
     await publishProject();
+  }
+
+  async function handleCmsPatch() {
+    if (!project) return;
+    setCmsPushLoading(true);
+    setCmsPushResult(null);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/cms-patch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deployConfig }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? "CMS push failed");
+      setCmsPushResult({ success: true, url: data.url });
+    } catch (e) {
+      setCmsPushResult({ error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setCmsPushLoading(false);
+    }
   }
 
   function handleClose() {
@@ -191,6 +214,58 @@ export function PublishDialog({ open, onOpenChange }: PublishDialogProps) {
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                     {buildPreviewError}
                   </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* CMS Patch — content-only push */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <FileJson className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-white mb-0.5">Push content only</h3>
+                <p className="text-xs text-slate-400 mb-3">
+                  Pushes <code className="text-amber-400 bg-slate-900/60 px-1 rounded">public/forge-cms/forge-content.json</code> to GitHub
+                  without rebuilding the entire site. Fast text &amp; settings updates for React app projects (e.g. Forge Jewellery).
+                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCmsPatch}
+                    disabled={cmsPushLoading || isPublishing || !deployConfig?.githubRepo}
+                    className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                  >
+                    {cmsPushLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <FileJson className="w-3.5 h-3.5 mr-1.5" />
+                    )}
+                    {cmsPushLoading ? "Pushing…" : "Push Content Only"}
+                  </Button>
+                  {cmsPushResult?.url && (
+                    <a href={cmsPushResult.url} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" variant="outline" className="border-slate-600 text-green-400">
+                        <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                        View on GitHub
+                      </Button>
+                    </a>
+                  )}
+                </div>
+                {cmsPushResult?.success && (
+                  <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Content pushed successfully!
+                  </p>
+                )}
+                {cmsPushResult?.error && (
+                  <p className="text-xs text-red-400 mt-2 flex items-start gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    {cmsPushResult.error}
+                  </p>
+                )}
+                {!deployConfig?.githubRepo && (
+                  <p className="text-xs text-slate-600 mt-1">Configure a GitHub repo above to enable.</p>
                 )}
               </div>
             </div>
