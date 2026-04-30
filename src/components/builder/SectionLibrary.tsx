@@ -18,6 +18,23 @@ import {
   Users,
   Menu,
   Plus,
+  Play,
+  Timer,
+  GitCompare,
+  CreditCard,
+  ShoppingBag,
+  Ruler,
+  User,
+  Tag,
+  BadgePercent,
+  Gem,
+  Pencil,
+  Settings,
+  Star,
+  TrendingUp,
+  Minus,
+  HelpCircle,
+  MessageCircle,
 } from "lucide-react";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -29,12 +46,30 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Image,
   Shield,
   Mail,
-  // registry uses 'AlignBottom' for the footer section; map it to PanelBottom (lucide has this one)
+  // registry uses 'AlignBottom' for the footer section; map it to PanelBottom
   AlignBottom: PanelBottom,
   PanelBottom,
   ShoppingCart,
   Users,
   Menu,
+  // New section icons
+  Play,
+  Timer,
+  GitCompare,
+  CreditCard,
+  ShoppingBag,
+  Ruler,
+  User,
+  Tag,
+  BadgePercent,
+  Gem,
+  Pencil,
+  Settings,
+  Star,
+  TrendingUp,
+  Minus,
+  HelpCircle,
+  MessageCircle,
 };
 
 export function SectionLibrary() {
@@ -278,10 +313,203 @@ function SectionThumb({ type }: { type: string }) {
           <rect x="30" y="28" width="140" height="4" rx="1" strokeDasharray="4 3" stroke="#64748b" fill="none" />
         </svg>
       );
+
+    // ── New sections ──────────────────────────────────────────────────────────
+
+    case "video-hero":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#0f172a" />
+          <circle cx="100" cy="30" r="14" fill="#D4AF37" opacity="0.2" />
+          <polygon points="95,23 95,37 110,30" fill="#D4AF37" />
+          <rect x="30" y="48" width="80" height="3" rx="1" fill="#334155" />
+        </svg>
+      );
+
+    case "countdown-timer":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#111" />
+          <rect x="30" y="10" width="30" height="28" rx="3" fill="#1e293b" />
+          <rect x="36" y="20" width="18" height="5" rx="1" fill="#D4AF37" />
+          <rect x="36" y="28" width="14" height="3" rx="1" fill="#64748b" />
+          <rect x="68" y="10" width="30" height="28" rx="3" fill="#1e293b" />
+          <rect x="74" y="20" width="18" height="5" rx="1" fill="#D4AF37" />
+          <rect x="74" y="28" width="14" height="3" rx="1" fill="#64748b" />
+          <rect x="106" y="10" width="30" height="28" rx="3" fill="#1e293b" />
+          <rect x="112" y="20" width="18" height="5" rx="1" fill="#D4AF37" />
+          <rect x="112" y="28" width="14" height="3" rx="1" fill="#64748b" />
+          <rect x="144" y="10" width="30" height="28" rx="3" fill="#1e293b" />
+          <rect x="150" y="20" width="18" height="5" rx="1" fill="#D4AF37" />
+          <rect x="150" y="28" width="14" height="3" rx="1" fill="#64748b" />
+        </svg>
+      );
+
+    case "comparison-table":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#1e293b" />
+          <rect x="20" y="8" width="80" height="6" rx="2" fill="#475569" />
+          <rect x="110" y="8" width="40" height="6" rx="2" fill="#D4AF37" />
+          <rect x="155" y="8" width="30" height="6" rx="2" fill="#475569" />
+          {[0,1,2].map(i => (
+            <g key={i} transform={`translate(0,${18 + i * 13})`}>
+              <rect x="20" y="0" width="80" height="8" rx="1" fill="#334155" />
+              <rect x="110" y="0" width="40" height="8" rx="1" fill="#166534" opacity="0.8" />
+              <rect x="155" y="0" width="30" height="8" rx="1" fill="#334155" />
+            </g>
+          ))}
+        </svg>
+      );
+
+    case "payment-badges":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#1e293b" />
+          {[0,1,2,3,4].map(i => (
+            <rect key={i} x={15 + i * 38} y="18" width="28" height="18" rx="3" fill="#334155" />
+          ))}
+          <rect x="70" y="46" width="60" height="3" rx="1" fill="#64748b" />
+        </svg>
+      );
+
+    case "product-detail-hero":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#1e293b" />
+          <rect x="10" y="8" width="80" height="44" rx="3" fill="#334155" />
+          <rect x="100" y="12" width="70" height="5" rx="2" fill="#fff" />
+          <rect x="100" y="22" width="40" height="4" rx="1" fill="#D4AF37" />
+          <rect x="100" y="30" width="55" height="3" rx="1" fill="#64748b" />
+          <rect x="100" y="36" width="50" height="3" rx="1" fill="#64748b" />
+          <rect x="100" y="44" width="60" height="10" rx="2" fill="#D4AF37" />
+        </svg>
+      );
+
+    case "collection-hero":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#0f172a" />
+          <rect x="0" y="0" width="200" height="28" fill="#1e293b" />
+          <rect x="60" y="8" width="80" height="5" rx="2" fill="#D4AF37" />
+          <rect x="70" y="17" width="60" height="3" rx="1" fill="#64748b" />
+          {[0,1,2,3].map(i => (
+            <rect key={i} x={10 + i * 48} y="34" width="40" height="20" rx="2" fill="#334155" />
+          ))}
+        </svg>
+      );
+
+    case "ring-size-guide":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#1e293b" />
+          <circle cx="60" cy="30" r="18" fill="none" stroke="#D4AF37" strokeWidth="3" />
+          <circle cx="60" cy="30" r="10" fill="none" stroke="#475569" strokeWidth="2" />
+          <rect x="90" y="12" width="80" height="4" rx="1" fill="#94a3b8" />
+          {[0,1,2,3].map(i => (
+            <rect key={i} x="90" y={22 + i * 9} width={40 + i * 10} height="3" rx="1" fill="#334155" />
+          ))}
+        </svg>
+      );
+
+    case "account-dashboard":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#0a0a0a" />
+          <circle cx="40" cy="22" r="12" fill="#334155" />
+          <rect x="20" y="38" width="40" height="4" rx="2" fill="#475569" />
+          {["Wishlist","Orders","Loyalty","Recent"].map((_, i) => (
+            <rect key={i} x={70 + i * 30} y="10" width="24" height="8" rx="2" fill={i === 0 ? "#D4AF37" : "#334155"} />
+          ))}
+          {[0,1,2].map(i => (
+            <rect key={i} x="70" y={26 + i * 10} width="110" height="6" rx="1" fill="#1e293b" />
+          ))}
+        </svg>
+      );
+
+    case "new-arrivals":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#1e293b" />
+          <rect x="10" y="8" width="50" height="5" rx="2" fill="#D4AF37" />
+          <rect x="10" y="16" width="80" height="3" rx="1" fill="#64748b" />
+          {[0,1,2,3].map(i => (
+            <g key={i} transform={`translate(${10 + i * 47}, 24)`}>
+              <rect width="38" height="24" rx="2" fill="#334155" />
+              <rect x="2" y="2" width="12" height="5" rx="1" fill="#D4AF37" opacity="0.8" />
+              <rect x="2" y="17" width="24" height="3" rx="1" fill="#64748b" />
+            </g>
+          ))}
+        </svg>
+      );
+
+    case "promo-banner":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#111" />
+          <rect x="30" y="10" width="60" height="5" rx="2" fill="#D4AF37" />
+          <rect x="20" y="20" width="160" height="8" rx="2" fill="#fff" opacity="0.9" />
+          <rect x="50" y="33" width="100" height="3" rx="1" fill="#64748b" />
+          <rect x="60" y="42" width="80" height="10" rx="5" fill="#D4AF37" />
+        </svg>
+      );
+
+    case "savings-strip":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#1e293b" />
+          <rect x="0" y="22" width="200" height="16" fill="#D4AF37" />
+          <rect x="15" y="27" width="40" height="6" rx="1" fill="#000" opacity="0.4" />
+          <circle cx="63" cy="30" r="2" fill="#000" opacity="0.4" />
+          <rect x="70" y="27" width="50" height="6" rx="1" fill="#000" opacity="0.4" />
+          <circle cx="128" cy="30" r="2" fill="#000" opacity="0.4" />
+          <rect x="135" y="27" width="45" height="6" rx="1" fill="#000" opacity="0.4" />
+        </svg>
+      );
+
+    case "moissanite-showcase":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#0f172a" />
+          <polygon points="100,8 115,22 100,36 85,22" fill="none" stroke="#D4AF37" strokeWidth="1.5" />
+          <polygon points="100,12 111,22 100,32 89,22" fill="#D4AF37" opacity="0.3" />
+          <rect x="20" y="44" width="160" height="4" rx="2" fill="#1e293b" />
+          <rect x="30" y="44" width="50" height="4" rx="2" fill="#D4AF37" opacity="0.6" />
+        </svg>
+      );
+
+    case "category-copy-editor":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#1e293b" />
+          {["Rings","Necklaces","Bracelets","Earrings","Pendants","Anklets"].map((_, i) => (
+            <g key={i} transform={`translate(10, ${6 + i * 9})`}>
+              <rect width="6" height="6" rx="1" fill="#D4AF37" opacity="0.7" />
+              <rect x="12" y="1" width={40 + (i % 3) * 15} height="4" rx="1" fill="#334155" />
+              <rect x={58 + (i % 3) * 15} y="1" width="100" height="4" rx="1" fill="#1e293b" />
+            </g>
+          ))}
+        </svg>
+      );
+
+    case "product-badge-settings":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#1e293b" />
+          <rect x="20" y="10" width="30" height="10" rx="5" fill="#D4AF37" />
+          <rect x="55" y="13" width="50" height="4" rx="1" fill="#64748b" />
+          <rect x="20" y="28" width="30" height="10" rx="5" fill="#166534" opacity="0.8" />
+          <rect x="55" y="31" width="60" height="4" rx="1" fill="#64748b" />
+          <rect x="20" y="46" width="30" height="10" rx="5" fill="#334155" />
+          <rect x="55" y="49" width="40" height="4" rx="1" fill="#64748b" />
+        </svg>
+      );
+
     default:
       return (
         <svg viewBox="0 0 200 60" className="w-full h-full">
           <rect width="200" height="60" fill="#1e293b" />
+          <rect x="60" y="24" width="80" height="12" rx="2" fill="#334155" />
         </svg>
       );
   }

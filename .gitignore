@@ -8,3 +8,6 @@ npm-debug.log*
 projects/*/export/
 projects/*/.forge-publish/
 
+# macOS resource fork / metadata files
+._*
+

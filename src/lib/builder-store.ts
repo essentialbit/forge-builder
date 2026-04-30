@@ -96,6 +96,9 @@ interface BuilderState {
   removeBlock: (sectionId: string, blockId: string) => void;
   reorderBlocks: (sectionId: string, fromIndex: number, toIndex: number) => void;
   duplicateBlock: (sectionId: string, blockId: string) => void;
+
+  // Template library
+  applyTemplate: (pageId: string, templateSections: Omit<Section, 'id'>[]) => void;
 }
 
 function generateId(prefix: string): string {
@@ -741,5 +744,48 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         return;
       }
     }
+  },
+
+  /**
+   * applyTemplate — stamps a template's section list onto a page.
+   * Replaces ALL existing sections on the page with the template's sections.
+   * Records history so the user can undo if they applied by mistake.
+   */
+  applyTemplate: (pageId, templateSections) => {
+    const { project } = get();
+    if (!project) return;
+    recordHistory(get, set);
+
+    // Build new Section objects from the template definitions
+    const newSections: Section[] = templateSections.map((tplSection) => ({
+      ...tplSection,
+      id: generateId(tplSection.type),
+    }));
+
+    // Replace the page's section list
+    const updatedPages = project.pages.map((page) => {
+      if (page.id !== pageId) return page;
+      return { ...page, sections: newSections.map((s) => s.id) };
+    });
+
+    // Remove old sections for this page from the sections map,
+    // then add the new ones
+    const oldPageSections = project.pages.find((p) => p.id === pageId)?.sections ?? [];
+    const remainingSections = { ...(project.sections ?? {}) };
+    for (const id of oldPageSections) delete remainingSections[id];
+    for (const s of newSections) remainingSections[s.id] = s;
+
+    set({
+      project: {
+        ...project,
+        pages: updatedPages,
+        sections: remainingSections,
+        updated: new Date().toISOString(),
+      },
+      hasUnsavedChanges: true,
+      selectedSectionId: null,
+    });
+
+    get().pingPreview({ type: 'RELOAD' });
   },
 }));

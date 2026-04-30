@@ -14,15 +14,17 @@ import {
   Package,
   Undo,
   Redo,
+  LayoutTemplate,
 } from "lucide-react";
 import Link from "next/link";
 
 interface ToolbarProps {
   onBrandKitClick: () => void;
   onPublishClick: () => void;
+  onTemplatesClick: () => void;
 }
 
-export function Toolbar({ onBrandKitClick, onPublishClick }: ToolbarProps) {
+export function Toolbar({ onBrandKitClick, onPublishClick, onTemplatesClick }: ToolbarProps) {
   const { project, hasUnsavedChanges, isSaving, saveProject, undo, redo, canUndo, canRedo, lastSavedAt } = useBuilderStore();
 
   return (
@@ -92,6 +94,17 @@ export function Toolbar({ onBrandKitClick, onPublishClick }: ToolbarProps) {
             Catalog
           </Button>
         </Link>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onTemplatesClick}
+          className="border-slate-700 text-slate-300 hover:text-white"
+          title="Apply a pre-built page template"
+        >
+          <LayoutTemplate className="w-4 h-4 mr-2" />
+          Templates
+        </Button>
 
         <Button
           variant="outline"

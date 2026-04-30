@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/builder/ErrorBoundary";
 import { ForgeAssistant } from "@/components/builder/ForgeAssistant";
 import { OnboardingChecklist } from "@/components/builder/OnboardingChecklist";
 import { SeoPanel } from "@/components/builder/SeoPanel";
+import { TemplateLibrary } from "@/components/builder/TemplateLibrary";
 
 export default function BuilderPage() {
   const params = useParams();
@@ -26,6 +27,7 @@ export default function BuilderPage() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [brandKitOpen, setBrandKitOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
   // Auth check — redirect to login if not authenticated
@@ -105,6 +107,7 @@ export default function BuilderPage() {
           <Toolbar
             onBrandKitClick={() => setBrandKitOpen(true)}
             onPublishClick={() => setPublishOpen(true)}
+            onTemplatesClick={() => setTemplateLibraryOpen(true)}
           />
 
           {/* Main Content */}
@@ -126,6 +129,11 @@ export default function BuilderPage() {
 
           {/* Publish Dialog */}
           <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} />
+
+          {/* Template Library Modal */}
+          {templateLibraryOpen && (
+            <TemplateLibrary onClose={() => setTemplateLibraryOpen(false)} />
+          )}
         </div>
 
         {/* Floating overlays */}
