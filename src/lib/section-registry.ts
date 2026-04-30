@@ -126,6 +126,55 @@ export const sectionRegistry: Record<string, SectionDefinition> = {
     },
   },
 
+  /**
+   * featured-products
+   * Staff-curated product grid — explicitly pin products by SKU.
+   * Ideal for flash sales, gift guides, "staff picks", and themed showcases.
+   * Unlike the general product-grid, this section is driven purely by
+   * hand-chosen SKUs and renders a compact, conversion-optimised layout.
+   */
+  'featured-products': {
+    type: 'featured-products',
+    name: 'Featured Products',
+    description: 'Hand-pick specific products to highlight — perfect for flash sales, gift guides, and staff picks',
+    icon: 'Star',
+    category: 'products',
+    defaultSettings: {
+      eyebrow: 'Staff Picks',
+      title: 'Hand-Picked For You',
+      subtitle: 'Our team selected these pieces for their quality, value, and style.',
+      product_slugs: [],
+      columns: 4,
+      show_compare_price: true,
+      show_savings_badge: true,
+      show_badge_label: true,
+      cta_text: 'Shop All',
+      cta_link: '/collections',
+      background: 'default',
+    },
+    schema: {
+      eyebrow: { type: 'text', label: 'Eyebrow label (e.g. Staff Picks, Flash Sale, Gift Guide)' },
+      title: { type: 'text', label: 'Section title' },
+      subtitle: { type: 'textarea', label: 'Subtitle (optional)' },
+      product_slugs: { type: 'product', label: 'Products (pin by SKU)' },
+      columns: { type: 'number', label: 'Grid columns', min: 2, max: 5 },
+      show_compare_price: { type: 'toggle', label: 'Show was/compare price' },
+      show_savings_badge: { type: 'toggle', label: 'Show discount % badge' },
+      show_badge_label: { type: 'toggle', label: 'Show "New" / "Sale" badge label' },
+      cta_text: { type: 'text', label: 'CTA button text (leave empty to hide)' },
+      cta_link: { type: 'text', label: 'CTA button link' },
+      background: {
+        type: 'select',
+        label: 'Background style',
+        options: [
+          { label: 'Default (dark)', value: 'default' },
+          { label: 'Subtle gold tint', value: 'gold-tint' },
+          { label: 'Light (near-white)', value: 'light' },
+        ],
+      },
+    },
+  },
+
   'category-showcase': {
     type: 'category-showcase',
     name: 'Category Showcase',

@@ -103,6 +103,10 @@ function buildCmsContent(project: Project): CmsContent {
   // Moissanite showcase copy (GRA strip text, diamond comparison text)
   const moissaniteShowcase = findFirstSection(project, 'moissanite-showcase');
 
+  // Featured products (staff-curated pinned SKU list)
+  // Note: also readable via useSectionSettings() on pages — this is a convenience copy
+  const featuredProducts = findFirstSection(project, 'featured-products');
+
   return {
     version: Date.now(),
     updatedAt: new Date().toISOString(),

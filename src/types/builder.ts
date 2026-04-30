@@ -29,7 +29,8 @@ export type SectionType =
   | 'savings-strip'
   | 'moissanite-showcase'
   | 'category-copy-editor'
-  | 'product-badge-settings';
+  | 'product-badge-settings'
+  | 'featured-products';
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 

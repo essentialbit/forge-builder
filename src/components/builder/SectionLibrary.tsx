@@ -505,6 +505,23 @@ function SectionThumb({ type }: { type: string }) {
         </svg>
       );
 
+    case "featured-products":
+      return (
+        <svg viewBox="0 0 200 60" className="w-full h-full">
+          <rect width="200" height="60" fill="#0f172a" />
+          {/* Eyebrow badge */}
+          <rect x="70" y="8" width="60" height="8" rx="4" fill="#D4AF37" opacity="0.8" />
+          {/* 4 product cards */}
+          {[0,1,2,3].map((i) => (
+            <g key={i}>
+              <rect x={10 + i * 47} y="22" width="38" height="28" rx="3" fill="#1e293b" />
+              <rect x={14 + i * 47} y="26" width="30" height="14" rx="2" fill="#334155" />
+              <rect x={14 + i * 47} y="44" width="20" height="3" rx="1" fill="#D4AF37" />
+            </g>
+          ))}
+        </svg>
+      );
+
     default:
       return (
         <svg viewBox="0 0 200 60" className="w-full h-full">
