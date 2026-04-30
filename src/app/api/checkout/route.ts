@@ -34,7 +34,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
     }
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lineItems: any[] = items.map((item: {
       sku?: string;
       name: string;
       price: number;
