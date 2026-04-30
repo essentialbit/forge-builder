@@ -14,3 +14,6 @@ projects/*/.forge-publish/
 # TypeScript build info cache
 *.tsbuildinfo
 
+
+# Phase planning notes (session scratch files)
+PHASE*.md
