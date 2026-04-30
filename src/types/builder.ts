@@ -13,7 +13,23 @@ export type SectionType =
   | 'faq'
   | 'featured_product'
   | 'testimonials'
-  | 'spacer';
+  | 'spacer'
+  // Added in previous session
+  | 'video-hero'
+  | 'countdown-timer'
+  | 'comparison-table'
+  | 'payment-badges'
+  | 'product-detail-hero'
+  | 'collection-hero'
+  | 'ring-size-guide'
+  | 'account-dashboard'
+  // Added for KRKC catalogue features
+  | 'new-arrivals'
+  | 'promo-banner'
+  | 'savings-strip'
+  | 'moissanite-showcase'
+  | 'category-copy-editor'
+  | 'product-badge-settings';
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
@@ -22,7 +38,7 @@ export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 // A block is the smallest editable unit. Sections that declare `blocks: [blockDef]`
 // in their schema can contain zero or more blocks of allowed types.
 // ─────────────────────────────────────────────────────────────────────────────
-export type BlockType = 'testimonial_card' | 'faq_item' | 'trust_badge' | 'footer_link' | 'footer_column' | 'newsletter_social_link' | 'comparison_row';
+export type BlockType = 'testimonial_card' | 'faq_item' | 'trust_badge' | 'footer_link' | 'footer_column' | 'newsletter_social_link' | 'comparison_row' | 'gra_badge' | 'new_arrival_card';
 
 export interface Block {
   id: string;          // e.g. "blk_xxxx"

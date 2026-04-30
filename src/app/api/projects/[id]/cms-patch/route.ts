@@ -32,7 +32,29 @@ interface CmsContent {
   global: {
     theme: { primaryColor: string; fontFamily: string };
     announcement?: { text: string; link: string; backgroundColor: string; textColor: string };
+    promoBanner?: Record<string, unknown>;
+    savingsStrip?: Record<string, unknown>;
+    badgeSettings?: Record<string, unknown>;
+    categoryHeroes?: Record<string, unknown>;
+    moissaniteShowcase?: Record<string, unknown>;
   };
+}
+
+// ── Helper: scan all sections across all pages for a given type ───────────────
+
+function findFirstSection(
+  project: Project,
+  type: string,
+): Record<string, unknown> | undefined {
+  for (const page of project.pages) {
+    for (const sectionId of page.sections ?? []) {
+      const section = project.sections?.[sectionId];
+      if (section?.type === type) {
+        return section.settings as Record<string, unknown>;
+      }
+    }
+  }
+  return undefined;
 }
 
 // ── Extract CMS payload from project ─────────────────────────────────────────
@@ -52,23 +74,34 @@ function buildCmsContent(project: Project): CmsContent {
     pages[page.slug] = { slug: page.slug, title: page.name, sections };
   }
 
-  // Pull announcement bar settings from first page's announcement section (if any)
+  // ── Pull global settings from known section types ─────────────────────────
+
+  // Announcement bar
   let announcement: CmsContent['global']['announcement'] | undefined;
-  for (const page of project.pages) {
-    for (const sectionId of page.sections ?? []) {
-      const section = project.sections?.[sectionId];
-      if (section?.type === 'announcement') {
-        announcement = {
-          text: String(section.settings?.text ?? ''),
-          link: String(section.settings?.link ?? ''),
-          backgroundColor: String(section.settings?.background_color ?? '#D4AF37'),
-          textColor: String(section.settings?.text_color ?? '#000000'),
-        };
-        break;
-      }
-    }
-    if (announcement) break;
+  const announcementSettings = findFirstSection(project, 'announcement');
+  if (announcementSettings) {
+    announcement = {
+      text: String(announcementSettings.text ?? ''),
+      link: String(announcementSettings.link ?? ''),
+      backgroundColor: String(announcementSettings.background_color ?? '#D4AF37'),
+      textColor: String(announcementSettings.text_color ?? '#000000'),
+    };
   }
+
+  // Promo banner (full settings object — React app reads the keys it needs)
+  const promoBanner = findFirstSection(project, 'promo-banner');
+
+  // Savings strip items + display config
+  const savingsStrip = findFirstSection(project, 'savings-strip');
+
+  // Product badge settings (GRA callout, savings % threshold, badge labels)
+  const badgeSettings = findFirstSection(project, 'product-badge-settings');
+
+  // Category hero copy (title, subtitle, image per category)
+  const categoryHeroes = findFirstSection(project, 'category-copy-editor');
+
+  // Moissanite showcase copy (GRA strip text, diamond comparison text)
+  const moissaniteShowcase = findFirstSection(project, 'moissanite-showcase');
 
   return {
     version: Date.now(),
@@ -81,6 +114,11 @@ function buildCmsContent(project: Project): CmsContent {
         fontFamily: project.theme?.fontFamily ?? 'inter',
       },
       ...(announcement ? { announcement } : {}),
+      ...(promoBanner ? { promoBanner } : {}),
+      ...(savingsStrip ? { savingsStrip } : {}),
+      ...(badgeSettings ? { badgeSettings } : {}),
+      ...(categoryHeroes ? { categoryHeroes } : {}),
+      ...(moissaniteShowcase ? { moissaniteShowcase } : {}),
     },
   };
 }

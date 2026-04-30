@@ -1,7 +1,7 @@
 import { blockRegistry } from '@/lib/block-registry';
 
 // Helper to get the block def for use in section definitions
-const { testimonial_card, faq_item, trust_badge, footer_column, newsletter_social_link, comparison_row } = blockRegistry;
+const { testimonial_card, faq_item, trust_badge, footer_column, newsletter_social_link, comparison_row, gra_badge, new_arrival_card } = blockRegistry;
 
 export const sectionRegistry: Record<string, SectionDefinition> = {
   hero: {
@@ -98,15 +98,31 @@ export const sectionRegistry: Record<string, SectionDefinition> = {
       columns: 3,
       show_prices: true,
       show_add_to_cart: true,
+      show_compare_price: true,
+      show_savings_badge: true,
+      badge_filter: '',
     },
     schema: {
       title: { type: 'text', label: 'Title' },
       subtitle: { type: 'textarea', label: 'Subtitle' },
-      collection_handle: { type: 'text', label: 'Collection handle (auto-filters)' },
-      product_slugs: { type: 'product', label: 'Products' },
+      collection_handle: { type: 'text', label: 'Collection / category filter (e.g. bracelets)' },
+      product_slugs: { type: 'product', label: 'Pin specific products' },
       columns: { type: 'number', label: 'Columns', min: 2, max: 5 },
       show_prices: { type: 'toggle', label: 'Show Prices' },
+      show_compare_price: { type: 'toggle', label: 'Show Was/Compare Price' },
+      show_savings_badge: { type: 'toggle', label: 'Show Discount % Badge' },
       show_add_to_cart: { type: 'toggle', label: 'Show Add to Cart' },
+      badge_filter: {
+        type: 'select',
+        label: 'Filter by badge (optional)',
+        options: [
+          { label: 'All products', value: '' },
+          { label: 'New arrivals only', value: 'new' },
+          { label: 'On sale only', value: 'sale' },
+          { label: 'Bestsellers only', value: 'bestseller' },
+          { label: 'Limited edition only', value: 'limited' },
+        ],
+      },
     },
   },
 
@@ -532,6 +548,297 @@ export const sectionRegistry: Record<string, SectionDefinition> = {
       show_loyalty: { type: 'toggle', label: 'Show Loyalty Points Tab' },
       show_recently_viewed: { type: 'toggle', label: 'Show Recently Viewed Tab' },
       background_color: { type: 'color', label: 'Background Colour' },
+    },
+  },
+
+  // ── KRKC Catalogue Feature Sections ─────────────────────────────────────
+  // These sections let non-technical staff control everything we added for
+  // the KRKC product batch: new arrivals, promo messaging, savings badges,
+  // moissanite certification callouts, and per-category editorial copy.
+
+  /**
+   * new-arrivals
+   * Spotlights products tagged badge:"new". Staff can pin specific SKUs
+   * via blocks OR let it auto-populate from the `badge: 'new'` catalogue
+   * field. Controls title, max count, and layout.
+   */
+  'new-arrivals': {
+    type: 'new-arrivals',
+    name: 'New Arrivals',
+    description: 'Showcase the latest products — auto-populated from "new" badge or manually pinned via blocks',
+    icon: 'Sparkles',
+    category: 'products',
+    blocks: [new_arrival_card],
+    defaultSettings: {
+      title: 'New Arrivals',
+      subtitle: 'Fresh from our latest KRKC sourcing run — now available in Australia.',
+      max_products: 8,
+      columns: 4,
+      auto_populate: true,
+      show_savings_badge: true,
+      show_compare_price: true,
+      cta_text: 'View all new arrivals',
+      cta_link: '/collections/all?badge=new',
+      color_scheme: '',
+    },
+    schema: {
+      title: { type: 'text', label: 'Section Title' },
+      subtitle: { type: 'textarea', label: 'Subtitle' },
+      max_products: { type: 'number', label: 'Max products to show (auto mode)', min: 4, max: 24, step: 4 },
+      columns: { type: 'number', label: 'Grid columns', min: 2, max: 5 },
+      auto_populate: { type: 'toggle', label: 'Auto-populate from catalogue (badge = "new")' },
+      show_compare_price: { type: 'toggle', label: 'Show Was / Compare Price' },
+      show_savings_badge: { type: 'toggle', label: 'Show Discount % Badge' },
+      cta_text: { type: 'text', label: 'View all button label' },
+      cta_link: { type: 'text', label: 'View all link URL' },
+      color_scheme: { type: 'color_scheme', label: 'Colour scheme' },
+    },
+  },
+
+  /**
+   * promo-banner
+   * A full-width, visually prominent promotional strip — distinct from the
+   * announcement bar. Used for major sale announcements, seasonal campaigns,
+   * and "up to X% off" messaging that needs more visual weight than a bar.
+   */
+  'promo-banner': {
+    type: 'promo-banner',
+    name: 'Promo Banner',
+    description: 'Full-width promotional banner for sales, campaigns, and discount announcements',
+    icon: 'Tag',
+    category: 'conversion',
+    defaultSettings: {
+      eyebrow: 'Limited Time',
+      headline: 'Up to 31% Off New Arrivals',
+      body: 'Our latest KRKC-sourced Cuban chains, iced bracelets, and moissanite rings — now at launch prices.',
+      cta_text: 'Shop the Sale',
+      cta_link: '/collections/all?badge=new',
+      secondary_cta_text: '',
+      secondary_cta_link: '',
+      background_image_url: '',
+      background_color: '#111111',
+      accent_color: '#C5A059',
+      text_color: '#ffffff',
+      layout: 'centered',
+      show_countdown: false,
+      countdown_end: '',
+    },
+    schema: {
+      eyebrow: { type: 'text', label: 'Eyebrow label (small text above headline)' },
+      headline: { type: 'text', label: 'Headline' },
+      body: { type: 'textarea', label: 'Body copy' },
+      cta_text: { type: 'text', label: 'Primary CTA text' },
+      cta_link: { type: 'text', label: 'Primary CTA link' },
+      secondary_cta_text: { type: 'text', label: 'Secondary CTA text (optional)' },
+      secondary_cta_link: { type: 'text', label: 'Secondary CTA link' },
+      background_image_url: { type: 'image', label: 'Background image (optional)' },
+      background_color: { type: 'color', label: 'Background colour' },
+      accent_color: { type: 'color', label: 'Accent / highlight colour' },
+      text_color: { type: 'color', label: 'Text colour' },
+      layout: {
+        type: 'select',
+        label: 'Layout',
+        options: [
+          { label: 'Centered', value: 'centered' },
+          { label: 'Left-aligned', value: 'left' },
+          { label: 'Split (text left, image right)', value: 'split' },
+        ],
+      },
+      show_countdown: { type: 'toggle', label: 'Show countdown timer' },
+      countdown_end: { type: 'text', label: 'Countdown end (ISO 8601, e.g. 2026-12-31T23:59:59)' },
+    },
+  },
+
+  /**
+   * savings-strip
+   * A thin, high-contrast horizontal strip — typically placed above the
+   * footer or between sections — that communicates the discount value prop.
+   * E.g. "Save 20–31% vs RRP · Free shipping over $100 · GRA certified"
+   */
+  'savings-strip': {
+    type: 'savings-strip',
+    name: 'Savings Strip',
+    description: 'Thin strip highlighting key value propositions — savings %, free shipping, certifications',
+    icon: 'BadgePercent',
+    category: 'conversion',
+    defaultSettings: {
+      items: [
+        'Save 20–31% vs RRP on new arrivals',
+        'Free shipping over $100',
+        'GRA certified moissanite',
+        '30-day returns',
+      ],
+      background_color: '#C5A059',
+      text_color: '#000000',
+      separator: '·',
+      scroll_speed: 'normal',
+      scrolling: false,
+    },
+    schema: {
+      items: { type: 'array', label: 'Strip items (editable list)' },
+      background_color: { type: 'color', label: 'Background colour' },
+      text_color: { type: 'color', label: 'Text colour' },
+      separator: {
+        type: 'select',
+        label: 'Item separator',
+        options: [
+          { label: '·  (dot)', value: '·' },
+          { label: '|  (pipe)', value: '|' },
+          { label: '★  (star)', value: '★' },
+          { label: '–  (dash)', value: '–' },
+        ],
+      },
+      scrolling: { type: 'toggle', label: 'Auto-scroll (marquee)' },
+      scroll_speed: {
+        type: 'select',
+        label: 'Scroll speed',
+        options: [
+          { label: 'Slow', value: 'slow' },
+          { label: 'Normal', value: 'normal' },
+          { label: 'Fast', value: 'fast' },
+        ],
+      },
+    },
+  },
+
+  /**
+   * moissanite-showcase
+   * A dedicated section for spotlighting moissanite products — includes
+   * the GRA certification trust callout, product grid, and optional
+   * comparison against diamond pricing. Designed to convert buyers who
+   * are price-comparing against fine jewellery.
+   */
+  'moissanite-showcase': {
+    type: 'moissanite-showcase',
+    name: 'Moissanite Showcase',
+    description: 'Highlight moissanite products with GRA certification trust callouts and diamond-comparison messaging',
+    icon: 'Gem',
+    category: 'products',
+    blocks: [gra_badge],
+    defaultSettings: {
+      title: 'VVS1 Moissanite — GRA Certified',
+      subtitle: 'The same fire as diamonds. A fraction of the price. Every stone is independently certified.',
+      columns: 3,
+      show_gra_strip: true,
+      gra_heading: 'GRA Certified Moissanite',
+      gra_body: 'Every moissanite piece in our collection comes with a GRA certificate. VVS1 D-Colour — the same refractive index as diamond, cut to the same proportions, at a price that makes sense.',
+      show_diamond_comparison: true,
+      diamond_comparison_text: 'A 1ct diamond ring: $5,000–$15,000. Our 1ct moissanite ring: under $100.',
+      product_slugs: [],
+      cta_text: 'Shop Moissanite',
+      cta_link: '/collections/rings',
+      color_scheme: '',
+    },
+    schema: {
+      title: { type: 'text', label: 'Section title' },
+      subtitle: { type: 'textarea', label: 'Subtitle' },
+      columns: { type: 'number', label: 'Grid columns', min: 2, max: 4 },
+      show_gra_strip: { type: 'toggle', label: 'Show GRA certification strip' },
+      gra_heading: { type: 'text', label: 'GRA strip heading' },
+      gra_body: { type: 'textarea', label: 'GRA strip body text' },
+      show_diamond_comparison: { type: 'toggle', label: 'Show diamond price comparison callout' },
+      diamond_comparison_text: { type: 'textarea', label: 'Diamond comparison text' },
+      product_slugs: { type: 'product', label: 'Pin specific moissanite products' },
+      cta_text: { type: 'text', label: 'CTA button text' },
+      cta_link: { type: 'text', label: 'CTA link' },
+      color_scheme: { type: 'color_scheme', label: 'Colour scheme' },
+    },
+  },
+
+  /**
+   * category-copy-editor
+   * Lets staff edit the hero title, subtitle, and background image that
+   * appear at the top of each /collections/:category page — without any
+   * code changes. One block per category. The CMS patch pushes this to
+   * forge-content.json which the React app reads at runtime.
+   */
+  'category-copy-editor': {
+    type: 'category-copy-editor',
+    name: 'Category Page Copy',
+    description: 'Edit the hero title, subtitle, and image for each collection page — no code needed',
+    icon: 'Pencil',
+    category: 'products',
+    defaultSettings: {
+      rings_title: 'Rings',
+      rings_subtitle: 'Moissanite, lab diamond, and CZ rings — every style, every budget.',
+      rings_image: '/images/categories/rings.jpg',
+      necklaces_title: 'Necklaces',
+      necklaces_subtitle: 'Rope chains, tennis necklaces, pendants and more — built to be worn every day.',
+      necklaces_image: '/images/categories/necklaces.jpg',
+      bracelets_title: 'Bracelets',
+      bracelets_subtitle: 'Cuban links, tennis bracelets, and iced-out styles. Worn every day. Noticed every time.',
+      bracelets_image: '/images/categories/bracelets.jpg',
+      earrings_title: 'Earrings',
+      earrings_subtitle: 'Studs, hoops, and drops — frame your face in gold.',
+      earrings_image: '/images/categories/earrings.jpg',
+      pendants_title: 'Pendants',
+      pendants_subtitle: 'Cross pendants, letter initials, iced-out medallions. Pair with any chain.',
+      pendants_image: '/images/categories/pendants.jpg',
+      anklets_title: 'Anklets',
+      anklets_subtitle: 'Delicate chains, charm anklets, and Cuban links for the ankle. Summer-ready, year-round wearable.',
+      anklets_image: '/images/categories/anklets.jpg',
+    },
+    schema: {
+      rings_title: { type: 'text', label: 'Rings — Page Title' },
+      rings_subtitle: { type: 'textarea', label: 'Rings — Subtitle' },
+      rings_image: { type: 'image', label: 'Rings — Hero Image' },
+      necklaces_title: { type: 'text', label: 'Necklaces — Page Title' },
+      necklaces_subtitle: { type: 'textarea', label: 'Necklaces — Subtitle' },
+      necklaces_image: { type: 'image', label: 'Necklaces — Hero Image' },
+      bracelets_title: { type: 'text', label: 'Bracelets — Page Title' },
+      bracelets_subtitle: { type: 'textarea', label: 'Bracelets — Subtitle' },
+      bracelets_image: { type: 'image', label: 'Bracelets — Hero Image' },
+      earrings_title: { type: 'text', label: 'Earrings — Page Title' },
+      earrings_subtitle: { type: 'textarea', label: 'Earrings — Subtitle' },
+      earrings_image: { type: 'image', label: 'Earrings — Hero Image' },
+      pendants_title: { type: 'text', label: 'Pendants — Page Title' },
+      pendants_subtitle: { type: 'textarea', label: 'Pendants — Subtitle' },
+      pendants_image: { type: 'image', label: 'Pendants — Hero Image' },
+      anklets_title: { type: 'text', label: 'Anklets — Page Title' },
+      anklets_subtitle: { type: 'textarea', label: 'Anklets — Subtitle' },
+      anklets_image: { type: 'image', label: 'Anklets — Hero Image' },
+    },
+  },
+
+  /**
+   * product-badge-settings
+   * A global settings section that controls store-wide badge behaviour:
+   * which categories show the GRA certification callout, what the
+   * savings badge threshold is, and which badge labels to use.
+   * This section doesn't render content directly — it writes to the
+   * CMS JSON as a settings object the React app reads.
+   */
+  'product-badge-settings': {
+    type: 'product-badge-settings',
+    name: 'Product Badge Settings',
+    description: 'Global settings for product badges — GRA callout, savings %, badge labels',
+    icon: 'Settings',
+    category: 'conversion',
+    defaultSettings: {
+      show_gra_callout: true,
+      gra_categories: 'rings,pendants',
+      gra_materials_keyword: 'moissanite',
+      show_savings_badge: true,
+      savings_badge_min_percent: 10,
+      new_badge_label: 'New',
+      sale_badge_label: 'Sale',
+      bestseller_badge_label: 'Best Seller',
+      limited_badge_label: 'Limited',
+      badge_bg_color: '#C5A059',
+      badge_text_color: '#000000',
+    },
+    schema: {
+      show_gra_callout: { type: 'toggle', label: 'Show GRA certificate callout on moissanite products' },
+      gra_materials_keyword: { type: 'text', label: 'GRA trigger keyword in materials field (e.g. moissanite)' },
+      gra_categories: { type: 'text', label: 'GRA callout categories (comma-separated, e.g. rings,pendants)' },
+      show_savings_badge: { type: 'toggle', label: 'Show discount % badge on product cards' },
+      savings_badge_min_percent: { type: 'number', label: 'Minimum % to show savings badge', min: 1, max: 99 },
+      new_badge_label: { type: 'text', label: '"New" badge label' },
+      sale_badge_label: { type: 'text', label: '"Sale" badge label' },
+      bestseller_badge_label: { type: 'text', label: '"Best Seller" badge label' },
+      limited_badge_label: { type: 'text', label: '"Limited" badge label' },
+      badge_bg_color: { type: 'color', label: 'Badge background colour' },
+      badge_text_color: { type: 'color', label: 'Badge text colour' },
     },
   },
 

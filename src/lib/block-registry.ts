@@ -128,6 +128,72 @@ export const blockRegistry: Record<string, BlockDefinition> = {
       them_value: { type: 'text', label: 'Their Value' },
     },
   },
+
+  /**
+   * gra_badge — a configurable certification/trust callout block.
+   * Used inside the moissanite-showcase section and can be added
+   * to any section that accepts blocks. Renders as a highlighted
+   * trust bar with icon, heading, and descriptive text.
+   */
+  gra_badge: {
+    type: 'gra_badge',
+    name: 'Certification Badge',
+    icon: 'Award',
+    defaultSettings: {
+      icon: 'Award',
+      heading: 'GRA Certified Moissanite',
+      body: 'VVS1 D-Colour — same refractive index as diamond',
+      accent_color: '#C5A059',
+    },
+    schema: {
+      icon: {
+        type: 'select',
+        label: 'Icon',
+        options: [
+          { label: 'Award', value: 'Award' },
+          { label: 'Shield check', value: 'ShieldCheck' },
+          { label: 'Star', value: 'Star' },
+          { label: 'Gem', value: 'Gem' },
+          { label: 'Check circle', value: 'CheckCircle' },
+        ],
+      },
+      heading: { type: 'text', label: 'Badge heading' },
+      body: { type: 'text', label: 'Badge description' },
+      accent_color: { type: 'color', label: 'Accent colour' },
+    },
+  },
+
+  /**
+   * new_arrival_card — a manually pinned product card block.
+   * Used inside the new-arrivals section to spotlight specific
+   * KRKC-sourced products without needing a developer. Staff
+   * enter the SKU and a short feature blurb.
+   */
+  new_arrival_card: {
+    type: 'new_arrival_card',
+    name: 'Product Card',
+    icon: 'Package',
+    defaultSettings: {
+      sku: '',
+      feature_blurb: '',
+      badge_override: 'new',
+    },
+    schema: {
+      sku: { type: 'text', label: 'Product SKU (e.g. FJ-BR-0425)' },
+      feature_blurb: { type: 'textarea', label: 'Short feature blurb (optional override)' },
+      badge_override: {
+        type: 'select',
+        label: 'Badge',
+        options: [
+          { label: 'New', value: 'new' },
+          { label: 'Sale', value: 'sale' },
+          { label: 'Bestseller', value: 'bestseller' },
+          { label: 'Limited', value: 'limited' },
+          { label: 'None', value: '' },
+        ],
+      },
+    },
+  },
 };
 
 // BlockType is derived from the registry — adding a key here automatically extends the type
