@@ -11,3 +11,6 @@ projects/*/.forge-publish/
 # macOS resource fork / metadata files
 ._*
 
+# TypeScript build info cache
+*.tsbuildinfo
+
