@@ -596,6 +596,99 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
     ],
   },
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // 6. GIFT GUIDE — curated pick page with featured products + editorial
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'gift-guide',
+    name: 'Gift Guide',
+    description: 'Curated gift recommendations — eyebrow framing, featured product grid, and editorial trust section.',
+    icon: 'Tag',
+    thumbnail: '',
+    category: 'landing',
+    tags: ['gifts', 'featured', 'editorial'],
+    sections: [
+      {
+        type: 'hero',
+        name: 'Gift Guide Hero',
+        settings: {
+          headline: "The Forge Gift Guide",
+          subheadline: "Jewellery she'll wear every day. Pieces he'll never take off. Curated by our team.",
+          cta_text: 'Start Shopping',
+          cta_link: '#picks',
+          background_image_url: '',
+          overlay_opacity: 60,
+          text_alignment: 'center',
+          color_scheme: '',
+          height: 'medium',
+          animation: 'fade-in',
+        },
+      },
+      {
+        type: 'savings-strip',
+        name: 'Savings Strip',
+        settings: {
+          items: [
+            'Free shipping on all orders',
+            'GRA certified moissanite from A$65',
+            '30-day return guarantee',
+            'Secure checkout',
+          ],
+          background_color: '#111111',
+          text_color: '#C5A059',
+          separator: '✦',
+          scrolling: true,
+          scroll_speed: 'slow',
+        },
+      },
+      {
+        type: 'featured-products',
+        name: 'Gifts Under $100',
+        settings: {
+          eyebrow: 'Under $100',
+          title: 'Gifts Under $100',
+          subtitle: 'Luxury feeling without the premium price. Every piece under $100 AUD.',
+          product_slugs: [],
+          columns: 4,
+          show_compare_price: true,
+          show_savings_badge: true,
+          show_badge_label: true,
+          cta_text: 'View All Gifts',
+          cta_link: '/collections',
+          background: 'default',
+        },
+      },
+      {
+        type: 'featured-products',
+        name: 'Statement Pieces',
+        settings: {
+          eyebrow: 'Statement Pieces',
+          title: "Make an Impression",
+          subtitle: 'For when you want jewellery that commands attention. Iced-out chains, moissanite rings, and more.',
+          product_slugs: [],
+          columns: 3,
+          show_compare_price: true,
+          show_savings_badge: false,
+          show_badge_label: true,
+          cta_text: 'Shop All',
+          cta_link: '/collections',
+          background: 'gold-tint',
+        },
+      },
+      {
+        type: 'trust-badges',
+        name: 'Trust Badges',
+        settings: { title: 'Every order backed by our guarantee' },
+        blocks: [
+          { id: tid(), type: 'trust_badge', settings: { icon: 'ShieldCheck', label: 'Secure Checkout', link: '' } },
+          { id: tid(), type: 'trust_badge', settings: { icon: 'Truck', label: 'Free AU Shipping', link: '' } },
+          { id: tid(), type: 'trust_badge', settings: { icon: 'RefreshCw', label: '30-Day Returns', link: '' } },
+          { id: tid(), type: 'trust_badge', settings: { icon: 'Award', label: 'GRA Certified', link: '' } },
+        ],
+      },
+    ],
+  },
+
 ];
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────
