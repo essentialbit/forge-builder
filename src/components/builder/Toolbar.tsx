@@ -17,14 +17,17 @@ import {
   LayoutTemplate,
 } from "lucide-react";
 import Link from "next/link";
+import { AgentToggleButton } from "@/components/ai/AgentPanel";
 
 interface ToolbarProps {
   onBrandKitClick: () => void;
   onPublishClick: () => void;
   onTemplatesClick: () => void;
+  aiPanelOpen?: boolean;
+  onAIPanelToggle?: () => void;
 }
 
-export function Toolbar({ onBrandKitClick, onPublishClick, onTemplatesClick }: ToolbarProps) {
+export function Toolbar({ onBrandKitClick, onPublishClick, onTemplatesClick, aiPanelOpen, onAIPanelToggle }: ToolbarProps) {
   const { project, hasUnsavedChanges, isSaving, saveProject, undo, redo, canUndo, canRedo, lastSavedAt } = useBuilderStore();
 
   return (
@@ -133,6 +136,13 @@ export function Toolbar({ onBrandKitClick, onPublishClick, onTemplatesClick }: T
             Preview
           </Button>
         </Link>
+
+        {/* AI Agent toggle */}
+        {onAIPanelToggle && (
+          <AgentToggleButton open={!!aiPanelOpen} onClick={onAIPanelToggle} />
+        )}
+
+        <div className="h-6 w-px bg-slate-700" />
 
         <Button
           size="sm"

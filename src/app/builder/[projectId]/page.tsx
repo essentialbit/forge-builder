@@ -18,6 +18,8 @@ import { ForgeAssistant } from "@/components/builder/ForgeAssistant";
 import { OnboardingChecklist } from "@/components/builder/OnboardingChecklist";
 import { SeoPanel } from "@/components/builder/SeoPanel";
 import { TemplateLibrary } from "@/components/builder/TemplateLibrary";
+import { AgentPanel } from "@/components/ai/AgentPanel";
+import { useAgentPanel } from "@/hooks/useAgentPanel";
 
 export default function BuilderPage() {
   const params = useParams();
@@ -29,6 +31,9 @@ export default function BuilderPage() {
   const [publishOpen, setPublishOpen] = useState(false);
   const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+
+  // Agent panel state lives here so the toolbar can toggle it
+  const agentPanel = useAgentPanel();
 
   // Auth check — redirect to login if not authenticated
   useEffect(() => {
@@ -74,6 +79,18 @@ export default function BuilderPage() {
     };
   }, [hasUnsavedChanges, autosaveEnabled, saveProject]);
 
+  // Keyboard shortcut: Cmd+I toggles AI panel
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
+        e.preventDefault();
+        agentPanel.toggle();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [agentPanel]);
+
   // Auth loading state
   if (!authChecked) {
     return (
@@ -108,20 +125,30 @@ export default function BuilderPage() {
             onBrandKitClick={() => setBrandKitOpen(true)}
             onPublishClick={() => setPublishOpen(true)}
             onTemplatesClick={() => setTemplateLibraryOpen(true)}
+            aiPanelOpen={agentPanel.open}
+            onAIPanelToggle={agentPanel.toggle}
           />
 
-          {/* Main Content */}
+          {/* Main Content — 4-column layout when AI panel is open */}
           <div className="flex-1 flex overflow-hidden">
-            {/* Left Panel */}
+            {/* Left Panel — pages, sections, SEO tree */}
             <LeftPanel />
 
-            {/* Canvas */}
-            <div className="flex-1 relative">
+            {/* Canvas — shrinks to accommodate AI panel */}
+            <div className="flex-1 relative min-w-0 overflow-hidden">
               <Canvas />
             </div>
 
-            {/* Right Panel */}
-            {selectedSectionId ? <Inspector /> : <SeoPanel />}
+            {/* Inspector / SEO Panel — always shown */}
+            <div className={agentPanel.open ? "hidden xl:flex" : "flex"}>
+              {selectedSectionId ? <Inspector /> : <SeoPanel />}
+            </div>
+
+            {/* AI Agent Panel — slides in from the right */}
+            <AgentPanel
+              open={agentPanel.open}
+              onClose={agentPanel.close}
+            />
           </div>
 
           {/* Brand Kit Modal */}
@@ -136,7 +163,7 @@ export default function BuilderPage() {
           )}
         </div>
 
-        {/* Floating overlays */}
+        {/* Floating overlays — ForgeAssistant is the mini help/SAST button */}
         <ForgeAssistant />
         <OnboardingChecklist />
       </DnDProvider>
