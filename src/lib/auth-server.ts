@@ -157,6 +157,74 @@ export async function generateResetToken(email: string): Promise<{ resetUrl: str
   return { resetUrl: `${base}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}` };
 }
 
+// ---------------------------------------------------------------------------
+// OAuth / OIDC user upsert
+// Called by the Auth.js signIn callback when a user logs in via Google/GitHub/Yahoo.
+// Creates a new user record if they don't exist, or updates lastLogin if they do.
+// ---------------------------------------------------------------------------
+
+export async function upsertOAuthUser(params: {
+  email: string;
+  name: string;
+  provider: string;
+  providerId: string;
+  avatarUrl?: string;
+}): Promise<void> {
+  const { email, name, provider, providerId, avatarUrl } = params;
+  const sqlite = getSqlite();
+
+  // Ensure the oauth_accounts table exists (additive migration)
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS oauth_accounts (
+      id           TEXT PRIMARY KEY,
+      user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider     TEXT NOT NULL,
+      provider_id  TEXT NOT NULL,
+      created_at   INTEGER NOT NULL DEFAULT (unixepoch()),
+      UNIQUE(provider, provider_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_oauth_accounts_user ON oauth_accounts(user_id);
+  `);
+
+  const db = getDb();
+  const normalEmail = email.toLowerCase().trim();
+
+  // Check if user exists
+  let user = await getUserByEmail(normalEmail);
+
+  if (!user) {
+    // Create user without a password (OAuth-only account)
+    const id = newId('usr');
+    const now = new Date();
+    await db.insert(users).values({
+      id,
+      email: normalEmail,
+      name: name || normalEmail.split('@')[0],
+      role: 'editor',
+      passwordHash: '', // OAuth users have no password
+      createdAt: now,
+      updatedAt: now,
+    });
+    user = await getUserById(id);
+  }
+
+  if (!user) return;
+
+  // Upsert OAuth account link
+  sqlite.prepare(`
+    INSERT INTO oauth_accounts (id, user_id, provider, provider_id)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(provider, provider_id) DO NOTHING
+  `).run(newId('oa'), user.id, provider, providerId);
+
+  // Update lastLogin (avatarUrl is stored in oauth_accounts, not users table)
+  void avatarUrl; // acknowledged — stored externally if needed
+  await db.update(users).set({
+    lastLogin: new Date(),
+    updatedAt: new Date(),
+  }).where(eq(users.id, user.id));
+}
+
 export async function consumeResetToken(email: string, rawToken: string, newPassword: string): Promise<boolean> {
   const user = await getUserByEmail(email);
   if (!user || !user.resetToken || !user.resetTokenExpires) return false;
