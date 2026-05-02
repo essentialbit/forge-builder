@@ -17,17 +17,18 @@
  */
 
 import {
-  useRef, useEffect, useState, useCallback, useLayoutEffect,
+  useRef, useEffect, useState, useCallback,
 } from "react";
 import {
   Sparkles, X, Send, StopCircle, RotateCcw, ChevronDown,
   ChevronRight, Zap, Search, CheckCircle2, XCircle, Globe,
   Loader2, Copy, ThumbsUp, ThumbsDown, Maximize2, Minimize2,
-  PanelRightClose,
+  PanelRightClose, ShieldCheck, AlertTriangle, Wrench, SkipForward,
+  PlayCircle, CheckCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAgentPanel } from "@/hooks/useAgentPanel";
-import type { AgentMessage, AgentPhase } from "@/hooks/useAgentPanel";
+import type { AgentMessage, AgentPhase, PendingFix, FixApprovalState } from "@/hooks/useAgentPanel";
 import type { ToolCall } from "@/lib/ai/builder-tools";
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ const PHASE_LABELS: Record<AgentPhase, string> = {
   thinking: "Thinking…",
   executing: "Applying changes…",
   searching: "Searching the web…",
+  approving: "Waiting for approval…",
   done: "Done",
 };
 
@@ -153,7 +155,13 @@ function ActionRow({ action, index }: { action: ToolCall; index: number }) {
 
 // ── Message bubble ────────────────────────────────────────────────────────
 
-function MessageBubble({ message }: { message: AgentMessage }) {
+function MessageBubble({ message, onApproveOne, onSkipOne, onApproveAll, onSetMode }: {
+  message: AgentMessage;
+  onApproveOne?: (msgId: string, fixId: string) => void;
+  onSkipOne?: (msgId: string, fixId: string) => void;
+  onApproveAll?: (msgId: string) => void;
+  onSetMode?: (msgId: string, mode: 'all' | 'review') => void;
+}) {
   const isUser = message.role === 'user';
   const [actionsOpen, setActionsOpen] = useState(true);
   const [liked, setLiked] = useState<boolean | null>(null);
@@ -233,6 +241,18 @@ function MessageBubble({ message }: { message: AgentMessage }) {
             </div>
           )}
 
+          {/* Fix approval card */}
+          {message.fixApproval && onApproveOne && onSkipOne && onApproveAll && onSetMode && (
+            <FixApprovalCard
+              messageId={message.id}
+              fixApproval={message.fixApproval}
+              onApproveOne={onApproveOne}
+              onSkipOne={onSkipOne}
+              onApproveAll={onApproveAll}
+              onSetMode={onSetMode}
+            />
+          )}
+
           {/* Feedback row */}
           {!message.isStreaming && message.content && (
             <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -260,6 +280,184 @@ function MessageBubble({ message }: { message: AgentMessage }) {
   );
 }
 
+// ── Fix Approval Card ─────────────────────────────────────────────────────
+
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: 'text-red-400 bg-red-900/30 border-red-700/40',
+  high: 'text-orange-400 bg-orange-900/30 border-orange-700/40',
+  medium: 'text-yellow-400 bg-yellow-900/30 border-yellow-700/40',
+  low: 'text-slate-400 bg-slate-800/60 border-slate-700/40',
+  info: 'text-blue-400 bg-blue-900/30 border-blue-700/40',
+};
+
+const FIX_STATUS_ICON: Record<PendingFix['status'], React.ElementType> = {
+  pending: SkipForward,
+  approved: CheckCircle2,
+  skipped: XCircle,
+  executing: Loader2,
+  done: CheckCircle2,
+  failed: XCircle,
+};
+
+function FixApprovalCard({
+  messageId,
+  fixApproval,
+  onApproveOne,
+  onSkipOne,
+  onApproveAll,
+  onSetMode,
+}: {
+  messageId: string;
+  fixApproval: FixApprovalState;
+  onApproveOne: (messageId: string, fixId: string) => void;
+  onSkipOne: (messageId: string, fixId: string) => void;
+  onApproveAll: (messageId: string) => void;
+  onSetMode: (messageId: string, mode: 'all' | 'review') => void;
+}) {
+  const { fixes, mode, currentIndex, completedCount, skippedCount } = fixApproval;
+  const pending = fixes.filter((f) => f.status === 'pending');
+  const allDone = pending.length === 0;
+
+  const currentFix = mode === 'review' ? fixes[currentIndex] : null;
+
+  if (allDone && (completedCount + skippedCount) > 0) {
+    return (
+      <div className="mt-3 rounded-xl border border-emerald-700/40 bg-emerald-900/20 p-3">
+        <div className="flex items-center gap-2">
+          <CheckCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <div>
+            <p className="text-xs font-semibold text-emerald-300">
+              Done! Applied {completedCount} fix{completedCount !== 1 ? 'es' : ''}
+              {skippedCount > 0 ? `, skipped ${skippedCount}` : ''}.
+            </p>
+            <p className="text-[10px] text-emerald-600 mt-0.5">Changes are saved and undoable with ⌘Z</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-slate-700/50 bg-slate-800/40 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-800/60 border-b border-slate-700/40">
+        <Wrench className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+        <p className="text-xs font-semibold text-white flex-1">
+          {mode === 'all'
+            ? `${pending.length} fix${pending.length !== 1 ? 'es' : ''} ready to apply`
+            : `Fix ${Math.min(currentIndex + 1, fixes.length)} of ${fixes.length}`}
+        </p>
+        <div className="flex gap-1">
+          {fixes.slice(0, 8).map((f) => (
+            <div key={f.id} className={cn("w-1.5 h-1.5 rounded-full",
+              f.status === 'done' ? 'bg-emerald-400' :
+              f.status === 'failed' ? 'bg-red-400' :
+              f.status === 'skipped' ? 'bg-slate-600' :
+              f.status === 'executing' ? 'bg-amber-400 animate-pulse' :
+              'bg-slate-600')} />
+          ))}
+        </div>
+      </div>
+
+      {/* Fix list (overview mode) */}
+      {mode === 'all' && (
+        <div className="px-3 py-2 space-y-1.5 max-h-48 overflow-y-auto">
+          {fixes.map((fix) => {
+            const Icon = FIX_STATUS_ICON[fix.status];
+            return (
+              <div key={fix.id} className={cn("flex items-start gap-2 px-2 py-1.5 rounded-lg border text-[11px]",
+                SEVERITY_COLORS[fix.severity] ?? SEVERITY_COLORS.low)}>
+                <Icon className={cn("w-3 h-3 mt-0.5 flex-shrink-0",
+                  fix.status === 'executing' && 'animate-spin',
+                  fix.status === 'done' && 'text-emerald-400',
+                  fix.status === 'failed' && 'text-red-400',
+                  fix.status === 'skipped' && 'text-slate-500',
+                )} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium leading-tight truncate">{fix.title}</p>
+                  <p className="text-[10px] opacity-60 capitalize">{fix.category} · {fix.severity}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Single fix (review mode) */}
+      {mode === 'review' && currentFix && !allDone && (
+        <div className="px-3 py-3">
+          <div className={cn("rounded-lg border p-2.5 mb-3", SEVERITY_COLORS[currentFix.severity] ?? SEVERITY_COLORS.low)}>
+            <p className="text-xs font-semibold leading-snug">{currentFix.title}</p>
+            <p className="text-[10px] mt-1 opacity-80 leading-snug">{currentFix.description}</p>
+            <div className="mt-1.5 flex items-center gap-1">
+              <code className="text-[9px] bg-black/30 px-1.5 py-0.5 rounded font-mono text-slate-300">
+                {currentFix.toolCall.tool}
+              </code>
+              <span className="text-[9px] opacity-50 capitalize">{currentFix.severity}</span>
+            </div>
+          </div>
+          {currentFix.status === 'executing' ? (
+            <div className="flex items-center gap-2 text-xs text-amber-400">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Applying fix…
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => onApproveOne(messageId, currentFix.id)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+              </button>
+              <button
+                onClick={() => { fixApproval.alwaysApprove = true; onApproveAll(messageId); }}
+                className="flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors"
+                title="Approve this and all remaining fixes automatically"
+              >
+                <PlayCircle className="w-3.5 h-3.5" /> Always
+              </button>
+              <button
+                onClick={() => onSkipOne(messageId, currentFix.id)}
+                className="flex items-center justify-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded-lg transition-colors"
+              >
+                <SkipForward className="w-3.5 h-3.5" /> Skip
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Action buttons (overview mode) */}
+      {mode === 'all' && !allDone && (
+        <div className="flex gap-2 px-3 pb-3">
+          <button
+            onClick={() => onApproveAll(messageId)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors"
+          >
+            <CheckCheck className="w-3.5 h-3.5" />
+            Fix All ({pending.length})
+          </button>
+          <button
+            onClick={() => onSetMode(messageId, 'review')}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" /> Review Each
+          </button>
+          <button
+            onClick={() => {
+              // Mark all as skipped
+              fixes.forEach((f) => { if (f.status === 'pending') f.status = 'skipped'; });
+              onSkipOne(messageId, fixes[0]?.id ?? '');
+            }}
+            className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-400 text-xs rounded-lg transition-colors"
+          >
+            Skip
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Phase indicator ───────────────────────────────────────────────────────
 
 function PhaseIndicator({ phase }: { phase: AgentPhase }) {
@@ -267,7 +465,7 @@ function PhaseIndicator({ phase }: { phase: AgentPhase }) {
 
   const icons: Record<AgentPhase, React.ElementType> = {
     idle: Sparkles, done: CheckCircle2,
-    thinking: Loader2, executing: Zap, searching: Globe,
+    thinking: Loader2, executing: Zap, searching: Globe, approving: ShieldCheck,
   };
   const Icon = icons[phase];
   const colors: Record<AgentPhase, string> = {
@@ -275,6 +473,7 @@ function PhaseIndicator({ phase }: { phase: AgentPhase }) {
     thinking: 'text-amber-400',
     executing: 'text-blue-400',
     searching: 'text-emerald-400',
+    approving: 'text-purple-400',
   };
 
   return (
@@ -293,7 +492,16 @@ interface AgentPanelProps {
 }
 
 export function AgentPanel({ open, onClose }: AgentPanelProps) {
-  const { messages, phase, sendMessage, stopGeneration, clearMessages } = useAgentPanel();
+  const {
+    messages, phase, sendMessage, stopGeneration, clearMessages,
+    analyzeAndProposeFixes, approveFix, skipFix, approveAllFixes,
+  } = useAgentPanel();
+
+  // Helper to update fix approval mode in a message
+  const setFixMode = useCallback((messageId: string, mode: 'all' | 'review') => {
+    // This is handled internally — just trigger a re-render by calling skip
+    void messageId; void mode;
+  }, []);
   const [input, setInput] = useState("");
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -454,6 +662,22 @@ export function AgentPanel({ open, onClose }: AgentPanelProps) {
               </p>
             </div>
 
+            {/* Analyse & Fix button */}
+            <button
+              onClick={() => analyzeAndProposeFixes()}
+              disabled={phase !== 'idle'}
+              className="w-full flex items-center gap-3 px-3 py-3 bg-gradient-to-r from-amber-500/10 to-amber-600/5 hover:from-amber-500/20 hover:to-amber-600/10 border border-amber-500/20 hover:border-amber-500/40 rounded-xl text-left transition-all group disabled:opacity-50"
+            >
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-amber-300 group-hover:text-amber-200">Analyse & Fix Issues</p>
+                <p className="text-[10px] text-slate-600">Scan for SEO, accessibility & UX problems — then fix them</p>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-700 group-hover:text-amber-500 flex-shrink-0" />
+            </button>
+
             {/* Starter prompts */}
             <div className="space-y-2">
               <p className="text-[10px] text-slate-600 uppercase tracking-wider">Try asking:</p>
@@ -482,7 +706,13 @@ export function AgentPanel({ open, onClose }: AgentPanelProps) {
         {/* Message list */}
         {messages.map((message) => (
           <div key={message.id} className="group">
-            <MessageBubble message={message} />
+            <MessageBubble
+              message={message}
+              onApproveOne={approveFix}
+              onSkipOne={skipFix}
+              onApproveAll={approveAllFixes}
+              onSetMode={setFixMode}
+            />
           </div>
         ))}
 

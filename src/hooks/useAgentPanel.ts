@@ -24,6 +24,28 @@ import type { ChatMessage } from '@/lib/ai/types';
 
 export type AgentMessageRole = 'user' | 'assistant' | 'system' | 'tool-result';
 
+// ── Proactive fix approval types ──────────────────────────────────────────
+
+export interface PendingFix {
+  id: string;
+  title: string;             // "Add meta title to Homepage"
+  description: string;       // longer explanation
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
+  category: string;          // 'seo' | 'accessibility' | 'conversion' | etc.
+  toolCall: ToolCall;        // The actual fix to execute
+  status: 'pending' | 'approved' | 'skipped' | 'executing' | 'done' | 'failed';
+  result?: ToolResult;
+}
+
+export interface FixApprovalState {
+  fixes: PendingFix[];
+  mode: 'all' | 'review';      // fix all at once vs review one-by-one
+  currentIndex: number;         // for review mode
+  alwaysApprove: boolean;       // skip remaining confirmations
+  completedCount: number;
+  skippedCount: number;
+}
+
 export interface AgentMessage {
   id: string;
   role: AgentMessageRole;
@@ -33,6 +55,7 @@ export interface AgentMessage {
   isStreaming?: boolean;
   thoughts?: string;
   error?: boolean;
+  fixApproval?: FixApprovalState; // Proactive fix approval UI
 }
 
 export type AgentPhase =
@@ -40,6 +63,7 @@ export type AgentPhase =
   | 'thinking'
   | 'executing'                 // Running tool calls
   | 'searching'                 // Web search in progress
+  | 'approving'                 // Waiting for user to approve fixes
   | 'done';
 
 function genId(): string {
@@ -389,10 +413,223 @@ export function useAgentPanel() {
     setExecutionLog([]);
   }, []);
 
+  // ── Proactive Analysis + Fix Approval ────────────────────────────────────
+
+  /**
+   * Run site analysis and propose fixes with approval workflow.
+   * Called when user clicks "Analyse & Fix" or after certain triggers.
+   */
+  const analyzeAndProposeFixes = useCallback(async () => {
+    if (phase !== 'idle') return;
+    setPhase('thinking');
+
+    const analysisId = genId();
+    setMessages((prev) => [...prev, {
+      id: analysisId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      isStreaming: true,
+    }]);
+
+    try {
+      // Run analysis
+      const snapshot = snapshotProject(store.project, store.selectedPageId);
+      const res = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project: snapshot }),
+      });
+
+      if (!res.ok) throw new Error('Analysis failed');
+
+      const data = (await res.json()) as {
+        score: number;
+        summary: string;
+        sast: Array<{ id: string; severity: string; category: string; message: string; recommendation: string; sectionType?: string }>;
+        drift: Array<{ id: string; severity: string; message: string; sectionType: string; field: string }>;
+        suggestions: Array<{ id: string; type: string; title: string; description: string; priority: number }>;
+      };
+
+      // Build fix proposals from findings
+      const fixes: PendingFix[] = [];
+
+      // Map SAST findings → tool calls
+      for (const finding of data.sast ?? []) {
+        if (finding.severity === 'critical' || finding.severity === 'high' || finding.severity === 'medium') {
+          const toolCall = mapFindingToToolCall(finding);
+          if (toolCall) {
+            fixes.push({
+              id: finding.id ?? genId(),
+              title: finding.message,
+              description: finding.recommendation,
+              severity: finding.severity as PendingFix['severity'],
+              category: finding.category,
+              toolCall,
+              status: 'pending',
+            });
+          }
+        }
+      }
+
+      // Map auto-suggestions → tool calls
+      for (const sug of (data.suggestions ?? []).slice(0, 3)) {
+        const toolCall = mapSuggestionToToolCall(sug);
+        if (toolCall) {
+          fixes.push({
+            id: sug.id ?? genId(),
+            title: sug.title,
+            description: sug.description,
+            severity: sug.priority <= 1 ? 'high' : sug.priority <= 2 ? 'medium' : 'low',
+            category: sug.type,
+            toolCall,
+            status: 'pending',
+          });
+        }
+      }
+
+      const scoreLabel = data.score >= 90 ? '🟢' : data.score >= 70 ? '🟡' : '🔴';
+      const summaryText = fixes.length > 0
+        ? `${scoreLabel} Site score: **${data.score}/100**\n\n${data.summary}\n\nI found **${fixes.length} issue${fixes.length !== 1 ? 's' : ''}** I can automatically fix. How would you like to proceed?`
+        : `${scoreLabel} Site score: **${data.score}/100**\n\n${data.summary}\n\nNo critical issues found that I can auto-fix right now. Your site is looking good!`;
+
+      setMessages((prev) => prev.map((m) =>
+        m.id === analysisId
+          ? {
+              ...m,
+              content: summaryText,
+              isStreaming: false,
+              fixApproval: fixes.length > 0 ? {
+                fixes,
+                mode: 'all',
+                currentIndex: 0,
+                alwaysApprove: false,
+                completedCount: 0,
+                skippedCount: 0,
+              } : undefined,
+            }
+          : m
+      ));
+
+      setPhase('idle');
+
+    } catch (e) {
+      setMessages((prev) => prev.map((m) =>
+        m.id === analysisId
+          ? { ...m, content: `Analysis failed: ${(e as Error).message}`, isStreaming: false, error: true }
+          : m
+      ));
+      setPhase('idle');
+    }
+  }, [phase, store]);
+
+  /**
+   * Approve and execute a single fix (review mode).
+   */
+  const approveFix = useCallback(async (messageId: string, fixId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg?.fixApproval) return;
+
+    const fa = msg.fixApproval;
+    const fix = fa.fixes.find((f) => f.id === fixId);
+    if (!fix) return;
+
+    // Mark as executing
+    updateFix(messageId, fixId, { status: 'executing' });
+    setPhase('executing');
+
+    try {
+      const result = await executeTool(fix.toolCall);
+      updateFix(messageId, fixId, { status: result.success ? 'done' : 'failed', result });
+
+      setMessages((prev) => prev.map((m) =>
+        m.id === messageId && m.fixApproval
+          ? {
+              ...m,
+              fixApproval: {
+                ...m.fixApproval,
+                completedCount: m.fixApproval.completedCount + (result.success ? 1 : 0),
+                currentIndex: m.fixApproval.currentIndex + 1,
+              },
+            }
+          : m
+      ));
+    } catch (e) {
+      updateFix(messageId, fixId, { status: 'failed', result: { success: false, message: (e as Error).message } });
+    } finally {
+      setPhase('idle');
+    }
+  }, [messages, executeTool]);
+
+  /**
+   * Skip a single fix (review mode).
+   */
+  const skipFix = useCallback((messageId: string, fixId: string) => {
+    updateFix(messageId, fixId, { status: 'skipped' });
+    setMessages((prev) => prev.map((m) =>
+      m.id === messageId && m.fixApproval
+        ? {
+            ...m,
+            fixApproval: {
+              ...m.fixApproval,
+              skippedCount: m.fixApproval.skippedCount + 1,
+              currentIndex: m.fixApproval.currentIndex + 1,
+            },
+          }
+        : m
+    ));
+  }, []);
+
+  /**
+   * Approve all pending fixes at once.
+   */
+  const approveAllFixes = useCallback(async (messageId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg?.fixApproval) return;
+
+    const pendingFixes = msg.fixApproval.fixes.filter((f) => f.status === 'pending');
+    setPhase('executing');
+
+    for (const fix of pendingFixes) {
+      updateFix(messageId, fix.id, { status: 'executing' });
+      try {
+        const result = await executeTool(fix.toolCall);
+        updateFix(messageId, fix.id, { status: result.success ? 'done' : 'failed', result });
+        setMessages((prev) => prev.map((m) =>
+          m.id === messageId && m.fixApproval
+            ? { ...m, fixApproval: { ...m.fixApproval, completedCount: m.fixApproval.completedCount + (result.success ? 1 : 0) } }
+            : m
+        ));
+        // Small delay between fixes so canvas updates are visible
+        await new Promise((r) => setTimeout(r, 300));
+      } catch {
+        updateFix(messageId, fix.id, { status: 'failed' });
+      }
+    }
+
+    setPhase('idle');
+  }, [messages, executeTool]);
+
+  /** Internal helper: update a single fix's fields */
+  function updateFix(messageId: string, fixId: string, updates: Partial<PendingFix>) {
+    setMessages((prev) => prev.map((m) =>
+      m.id === messageId && m.fixApproval
+        ? {
+            ...m,
+            fixApproval: {
+              ...m.fixApproval,
+              fixes: m.fixApproval.fixes.map((f) => f.id === fixId ? { ...f, ...updates } : f),
+            },
+          }
+        : m
+    ));
+  }
+
   return {
     open, toggle, close,
     messages, phase, streamBuffer, executionLog,
     sendMessage, stopGeneration, clearMessages,
+    analyzeAndProposeFixes, approveFix, skipFix, approveAllFixes,
   };
 }
 
@@ -457,3 +694,102 @@ function findSection(sectionId: string): {
 
 // Expose findSection for use in executeTool (currently unused directly but kept for future tool expansions)
 export { findSection };
+
+// ── Fix plan helpers ──────────────────────────────────────────────────────
+// Deterministically map SAST findings and suggestions to builder tool calls.
+
+interface SASTFindingLike {
+  id?: string;
+  severity: string;
+  category: string;
+  message: string;
+  recommendation: string;
+  sectionType?: string;
+}
+
+interface SuggestionLike {
+  id?: string;
+  type: string;
+  title: string;
+  description: string;
+  priority: number;
+}
+
+function mapFindingToToolCall(finding: SASTFindingLike): ToolCall | null {
+  const msg = finding.message.toLowerCase();
+  const { project, selectedPageId } = useBuilderStore.getState();
+  const pageId = selectedPageId ?? project?.pages[0]?.id ?? 'home';
+
+  // SEO issues → set_seo
+  if (finding.category === 'seo') {
+    if (msg.includes('title') || msg.includes('description') || msg.includes('meta')) {
+      return {
+        tool: 'set_seo',
+        params: {
+          pageId,
+          ...(msg.includes('title') ? { title: project?.name ?? 'My Website' } : {}),
+          ...(msg.includes('description') ? { description: `${project?.name ?? 'My Website'} — professional website built with Forge Builder` } : {}),
+        },
+      };
+    }
+  }
+
+  // Missing sections → add_section
+  if (finding.category === 'conversion' || finding.category === 'ux') {
+    if (msg.includes('newsletter') || msg.includes('email signup')) {
+      return { tool: 'add_section', params: { pageId, sectionType: 'newsletter' } };
+    }
+    if (msg.includes('testimonial') || msg.includes('review')) {
+      return { tool: 'add_section', params: { pageId, sectionType: 'testimonials' } };
+    }
+    if (msg.includes('trust') || msg.includes('badge')) {
+      return { tool: 'add_section', params: { pageId, sectionType: 'trust-badges' } };
+    }
+    if (msg.includes('faq')) {
+      return { tool: 'add_section', params: { pageId, sectionType: 'faq' } };
+    }
+  }
+
+  // Section content fixes → update_section
+  if (finding.sectionType) {
+    const sections = useBuilderStore.getState().getSections();
+    const section = sections.find((s) => s.type === finding.sectionType);
+    if (section) {
+      if (msg.includes('placeholder') || msg.includes('lorem ipsum') || msg.includes('sample text')) {
+        return {
+          tool: 'generate_content',
+          params: { sectionType: finding.sectionType, brief: `Generate professional content for a ${finding.sectionType} section. ${finding.recommendation}` },
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function mapSuggestionToToolCall(suggestion: SuggestionLike): ToolCall | null {
+  const { project, selectedPageId } = useBuilderStore.getState();
+  const pageId = selectedPageId ?? project?.pages[0]?.id ?? 'home';
+  const title = suggestion.title.toLowerCase();
+
+  if (title.includes('newsletter') || title.includes('email')) {
+    return { tool: 'add_section', params: { pageId, sectionType: 'newsletter' } };
+  }
+  if (title.includes('testimonial') || title.includes('review')) {
+    return { tool: 'add_section', params: { pageId, sectionType: 'testimonials' } };
+  }
+  if (title.includes('trust') || title.includes('badge')) {
+    return { tool: 'add_section', params: { pageId, sectionType: 'trust-badges' } };
+  }
+  if (title.includes('faq')) {
+    return { tool: 'add_section', params: { pageId, sectionType: 'faq' } };
+  }
+  if (title.includes('seo') || title.includes('title') || title.includes('description')) {
+    return { tool: 'set_seo', params: { pageId, title: project?.name ?? 'My Website' } };
+  }
+  if (title.includes('page') && title.includes('add')) {
+    const pageName = title.match(/add\s+(\w+)\s+page/i)?.[1] ?? 'New Page';
+    return { tool: 'add_page', params: { name: pageName } };
+  }
+  return null;
+}

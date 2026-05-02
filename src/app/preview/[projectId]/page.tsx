@@ -67,6 +67,37 @@ export default function PreviewPage() {
     return () => window.removeEventListener("message", handleMessage);
   }, [handleMessage]);
 
+  // Report content height to the parent builder so it can size the iframe correctly.
+  // Uses ResizeObserver for live updates as content loads/changes.
+  useEffect(() => {
+    if (loading) return;
+
+    const reportHeight = () => {
+      const height = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.offsetHeight,
+      );
+      window.parent.postMessage({ type: "CONTENT_HEIGHT", height }, "*");
+    };
+
+    // Initial reports (staggered — images may not be loaded yet)
+    const t1 = setTimeout(reportHeight, 100);
+    const t2 = setTimeout(reportHeight, 600);
+    const t3 = setTimeout(reportHeight, 1500);
+
+    // Live observer — catches dynamic content changes
+    const observer = new ResizeObserver(reportHeight);
+    observer.observe(document.documentElement);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      observer.disconnect();
+    };
+  }, [loading, sections]);
+
   // Notify builder when section is clicked
   const handleSectionClick = (sectionId: string) => {
     window.parent.postMessage({ type: "SECTION_CLICKED", sectionId }, "*");
